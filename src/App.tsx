@@ -1,0 +1,1060 @@
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { doc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
+import { auth, db } from './firebase/config';
+import {
+  UserProfile,
+  Language,
+  RoomDocument,
+  RoomPlayer,
+  GameDocument,
+  PlayerSlot,
+} from './types';
+import {
+  getLocalGuestProfile,
+  getOrCreateUserProfile,
+  loginAsGuest,
+  loginWithGoogle,
+  updateUserProfile,
+} from './services/authService';
+import {
+  rollDice as serviceRollDice,
+  moveToken as serviceMoveToken,
+  leaveRoom as serviceLeaveRoom,
+  startGame as serviceStartGame,
+  joinRoom as serviceJoinRoom,
+  createSoloRoom,
+  handleTurnTimeout,
+} from './services/gameService';
+import { getLegalMoves, hasPlayerWon, countTokensHome } from './game-engine/engine';
+import { getTranslation } from './i18n/translations';
+import { soundFx } from './utils/sound';
+
+// UI Components
+import { Header } from './components/ui/Header';
+import { LudoBoard } from './components/board/LudoBoard';
+import { DiceComponent } from './components/game/DiceComponent';
+import { TurnIndicator } from './components/game/TurnIndicator';
+import { PlayerCard } from './components/game/PlayerCard';
+import { VoicePanel } from './components/game/VoicePanel';
+import { QuickReactions } from './components/game/QuickReactions';
+import { LobbyScreen } from './components/room/LobbyScreen';
+import { CreateRoomModal } from './components/room/CreateRoomModal';
+import { JoinRoomModal } from './components/room/JoinRoomModal';
+import { GameResultModal } from './components/room/GameResultModal';
+import { HowToPlayModal } from './components/room/HowToPlayModal';
+import { RoomHistoryModal } from './components/room/RoomHistoryModal';
+import { EditProfileModal } from './components/room/EditProfileModal';
+import { InstallPwaButton } from './components/ui/InstallPwaButton';
+
+import {
+  PlusCircle,
+  LogIn,
+  BookOpen,
+  History,
+  RotateCcw,
+  Sparkles,
+  Swords,
+  Trophy,
+  Users,
+  KeyRound,
+  Edit3,
+  Bot,
+  WifiOff,
+  Radio,
+  LogOut,
+  Loader2,
+} from 'lucide-react';
+
+export default function App() {
+  const [user, setUser] = useState<UserProfile>(() => getLocalGuestProfile());
+  const [authLoading, setAuthLoading] = useState(false);
+  const [language, setLanguage] = useState<Language>(() => {
+    const local = getLocalGuestProfile();
+    return local.preferredLanguage || 'bn';
+  });
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Network offline detection
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Active Room & Game State
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [room, setRoom] = useState<RoomDocument | null>(null);
+  const [players, setPlayers] = useState<Record<string, RoomPlayer>>({});
+  const [voiceSessions, setVoiceSessions] = useState<Record<string, { enabled: boolean; isSpeaking: boolean }>>({});
+  const [game, setGame] = useState<GameDocument | null>(null);
+
+  // Local UI Interaction State
+  const [isRolling, setIsRolling] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  // Direct Inline Room ID Join State
+  const [quickRoomCode, setQuickRoomCode] = useState('');
+  const [quickJoinLoading, setQuickJoinLoading] = useState(false);
+  const [quickJoinError, setQuickJoinError] = useState<string | null>(null);
+
+  // Play Alone (Solo Mode) State
+  const [soloLoading, setSoloLoading] = useState(false);
+  const [soloError, setSoloError] = useState<string | null>(null);
+
+  // Modals
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [initialJoinCode, setInitialJoinCode] = useState('');
+
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // 1. Initial Authentication & Profile Sync
+  useEffect(() => {
+    // Check if URL has ?room=123456
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    if (roomParam) {
+      setInitialJoinCode(roomParam);
+      setQuickRoomCode(roomParam);
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+      try {
+        if (firebaseUser) {
+          const profile = await getOrCreateUserProfile(firebaseUser);
+          setUser(profile);
+          setLanguage(profile.preferredLanguage || 'bn');
+
+          if (roomParam) {
+            setInitialJoinCode(roomParam);
+            setShowJoinModal(true);
+          } else if (profile.activeRoomId) {
+            setCurrentRoomId(profile.activeRoomId);
+          }
+        }
+      } catch (err: any) {
+        console.warn('Auth state sync notice:', err?.message || err);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Real-time Room and Players synchronization
+  useEffect(() => {
+    if (!currentRoomId) {
+      setRoom(null);
+      setPlayers({});
+      setGame(null);
+      return;
+    }
+
+    const roomRef = doc(db, 'rooms', currentRoomId);
+    const unsubRoom = onSnapshot(roomRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setRoom(snapshot.data() as RoomDocument);
+      } else {
+        // Room not found or deleted
+        setCurrentRoomId(null);
+      }
+    });
+
+    const playersRef = collection(db, 'rooms', currentRoomId, 'players');
+    const unsubPlayers = onSnapshot(playersRef, (snapshot) => {
+      const pMap: Record<string, RoomPlayer> = {};
+      snapshot.docs.forEach((d) => {
+        pMap[d.id] = d.data() as RoomPlayer;
+      });
+      setPlayers(pMap);
+    });
+
+    const voiceSessionsRef = collection(db, 'rooms', currentRoomId, 'voiceSessions');
+    const unsubVoice = onSnapshot(voiceSessionsRef, (snapshot) => {
+      const vMap: Record<string, { enabled: boolean; isSpeaking: boolean }> = {};
+      snapshot.docs.forEach((d) => {
+        vMap[d.id] = d.data() as any;
+      });
+      setVoiceSessions(vMap);
+    });
+
+    return () => {
+      unsubRoom();
+      unsubPlayers();
+      unsubVoice();
+    };
+  }, [currentRoomId]);
+
+  // Merge live WebRTC voice session speaking statuses into players object
+  const mergedPlayers = useMemo(() => {
+    const res: Record<string, RoomPlayer> = {};
+    (Object.entries(players) as [string, RoomPlayer][]).forEach(([uid, p]) => {
+      const vSession = voiceSessions[uid];
+      res[uid] = {
+        ...p,
+        voiceEnabled: vSession ? Boolean(vSession.enabled) : Boolean(p.voiceEnabled),
+        isSpeaking: vSession ? Boolean(vSession.isSpeaking) : Boolean(p.isSpeaking),
+      };
+    });
+    return res;
+  }, [players, voiceSessions]);
+
+  // 3. Real-time Game Document synchronization
+  useEffect(() => {
+    if (!currentRoomId || !room?.currentGameId) {
+      setGame(null);
+      return;
+    }
+
+    const gameRef = doc(db, 'rooms', currentRoomId, 'games', room.currentGameId);
+    const unsubGame = onSnapshot(gameRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const gameData = snapshot.data() as GameDocument;
+        setGame(gameData);
+      }
+    });
+
+    return () => unsubGame();
+  }, [currentRoomId, room?.currentGameId]);
+
+  // Map uid to player slot
+  const slotMap = useMemo(() => {
+    const map: Record<string, PlayerSlot> = {};
+    (Object.values(players) as RoomPlayer[]).forEach((p) => {
+      map[p.uid] = p.slot;
+    });
+    return map;
+  }, [players]);
+
+  // Calculate Legal Moves for current user
+  const legalMoves = useMemo(() => {
+    if (
+      !game ||
+      !user ||
+      game.currentPlayerUid !== user.uid ||
+      game.status !== 'AWAITING_TOKEN_SELECTION' ||
+      game.diceValue === null ||
+      !room
+    ) {
+      return [];
+    }
+
+    const mySlot = slotMap[user.uid] || 'P1';
+    return getLegalMoves(
+      user.uid,
+      mySlot,
+      game.diceValue,
+      game.tokens,
+      slotMap,
+      room.settings
+    );
+  }, [game, user, slotMap, room]);
+
+  // Automated System Bot Logic (Runs seamlessly when playing alone or when a bot's turn arrives)
+  useEffect(() => {
+    if (!game || !room || !user) return;
+    if (room.status !== 'PLAYING' || game.winnerUid) return;
+
+    const currentUid = game.currentPlayerUid;
+    const isBotTurn = currentUid.startsWith('bot_');
+    if (!isBotTurn) return;
+
+    // Room admin triggers bot moves
+    if (room.adminUid !== user.uid) return;
+
+    let timer: NodeJS.Timeout;
+
+    // Phase 1: Automated bot rolls the dice
+    if (
+      (game.status === 'AWAITING_ROLL' || game.status === 'EXTRA_ROLL') &&
+      !game.diceRolled
+    ) {
+      timer = setTimeout(async () => {
+        try {
+          const botPlayer = players[currentUid];
+          const botProfile = {
+            uid: currentUid,
+            displayName: botPlayer?.displayName || 'Robot 🤖',
+            avatar: botPlayer?.avatar || '🤖',
+          } as UserProfile;
+
+          soundFx.diceRoll();
+          await serviceRollDice(room.roomId, game.gameId, botProfile, game.version);
+        } catch (err: any) {
+          console.warn('Automated bot roll notice:', err?.message || err);
+        }
+      }, 900);
+    }
+
+    // Phase 2: Automated bot chooses best token and moves
+    else if (
+      game.status === 'AWAITING_TOKEN_SELECTION' &&
+      game.diceRolled &&
+      game.diceValue !== null
+    ) {
+      timer = setTimeout(async () => {
+        try {
+          const botSlot = slotMap[currentUid] || 'P2';
+          const botLegalMoves = getLegalMoves(
+            currentUid,
+            botSlot,
+            game.diceValue!,
+            game.tokens,
+            slotMap,
+            room.settings
+          );
+
+          if (botLegalMoves.length === 0) return;
+
+          // AI Heuristic to choose optimal move
+          let bestTokenId = botLegalMoves[0];
+          let bestScore = -1;
+
+          for (const tId of botLegalMoves) {
+            const token =
+              game.tokens[currentUid]?.[tId.toString()] ||
+              game.tokens[currentUid]?.[tId];
+            if (!token) continue;
+            let score = 10;
+            if (token.zone === 'YARD' && game.diceValue === 6) {
+              score = 300; // Unlock new piece
+            } else if (token.zone === 'HOME_PATH') {
+              if (token.progress + game.diceValue === 56) {
+                score = 1000; // Enters Home!
+              } else {
+                score = 400 + token.progress;
+              }
+            } else if (token.zone === 'TRACK') {
+              score = 60 + token.progress;
+            }
+            if (score > bestScore) {
+              bestScore = score;
+              bestTokenId = tId;
+            }
+          }
+
+          const botPlayer = players[currentUid];
+          const botProfile = {
+            uid: currentUid,
+            displayName: botPlayer?.displayName || 'Robot 🤖',
+          } as UserProfile;
+
+          await serviceMoveToken(
+            room.roomId,
+            game.gameId,
+            botProfile,
+            bestTokenId,
+            game.version
+          );
+        } catch (err: any) {
+          console.warn('Automated bot move notice:', err?.message || err);
+        }
+      }, 750);
+    }
+
+    return () => clearTimeout(timer);
+  }, [game, room, user, players, slotMap]);
+
+  // Automated Turn Timeout auto-advance (Triggered by room admin if current player is inactive)
+  useEffect(() => {
+    if (!game || !room || !user || game.status === 'GAME_OVER' || room.status !== 'PLAYING') return;
+    if (room.adminUid !== user.uid) return;
+
+    const remainingMs = Math.max(100, game.turnExpiresAt - Date.now() + 500);
+    const timer = setTimeout(() => {
+      if (Date.now() >= game.turnExpiresAt && game.status !== 'GAME_OVER') {
+        handleTurnTimeout(room.roomId, game.gameId).catch(() => {});
+      }
+    }, remainingMs);
+
+    return () => clearTimeout(timer);
+  }, [game?.turnExpiresAt, game?.turnNumber, game?.status, room?.roomId, room?.adminUid, user?.uid]);
+
+  // Handlers
+  const handlePlayAlone = async () => {
+    if (!user) return;
+    soundFx.click();
+    setSoloLoading(true);
+    setSoloError(null);
+    try {
+      // Start instant match with automated system
+      const result = await createSoloRoom(user, 1);
+      setCurrentRoomId(result.roomId);
+    } catch (err: any) {
+      console.error('Play alone failed:', err);
+      setSoloError(err.message || 'Could not start solo game');
+    } finally {
+      setSoloLoading(false);
+    }
+  };
+  const handleLanguageToggle = () => {
+    const nextLang = language === 'bn' ? 'en' : 'bn';
+    setLanguage(nextLang);
+    if (user) {
+      updateUserProfile(user.uid, { preferredLanguage: nextLang }).catch(() => {});
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      soundFx.click();
+      setAuthError(null);
+      const googleUser = await loginWithGoogle();
+      const profile = await getOrCreateUserProfile(googleUser);
+      setUser(profile);
+    } catch (e: any) {
+      if (e?.code !== 'auth/popup-closed-by-user') {
+        console.warn('Google sign-in issue:', e);
+        setAuthError(e?.message || 'Google sign-in could not be completed.');
+      }
+    }
+  };
+
+  const handleQuickJoin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = quickRoomCode.trim();
+    if (!code || !user) return;
+    soundFx.click();
+    setQuickJoinLoading(true);
+    setQuickJoinError(null);
+
+    try {
+      const result = await serviceJoinRoom(code, user);
+      setCurrentRoomId(result.roomId);
+      setQuickRoomCode('');
+    } catch (err: any) {
+      if (err.message === 'errorRoomNotFound') {
+        setQuickJoinError(getTranslation(language, 'errorRoomNotFound'));
+      } else if (err.message === 'errorRoomFull') {
+        setQuickJoinError(getTranslation(language, 'errorRoomFull'));
+      } else {
+        setQuickJoinError(err.message || 'Failed to join room');
+      }
+    } finally {
+      setQuickJoinLoading(false);
+    }
+  };
+
+  const handleRollDice = async () => {
+    if (!user || !game || !currentRoomId || isRolling) return;
+    if (game.currentPlayerUid !== user.uid) return;
+
+    try {
+      // Haptic tactile feedback for dice roll on mobile devices
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate(40);
+        } catch {}
+      }
+      setIsRolling(true);
+      setActionError(null);
+      await serviceRollDice(currentRoomId, game.gameId, user, game.version);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to roll dice');
+    } finally {
+      setIsRolling(false);
+    }
+  };
+
+  const handleTokenClick = async (tokenId: number) => {
+    if (!user || !game || !currentRoomId) return;
+    if (game.currentPlayerUid !== user.uid) return;
+    if (!legalMoves.includes(tokenId)) return;
+
+    try {
+      // Haptic tactile feedback for token movement on mobile devices
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        try {
+          navigator.vibrate([25, 35, 25]);
+        } catch {}
+      }
+      setActionError(null);
+      await serviceMoveToken(currentRoomId, game.gameId, user, tokenId, game.version);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to move token');
+    }
+  };
+
+  const handleLeaveRoom = async () => {
+    soundFx.click();
+    if (confirm(getTranslation(language, 'confirmLeave'))) {
+      if (currentRoomId && user) {
+        await serviceLeaveRoom(currentRoomId, user.uid);
+      }
+      setCurrentRoomId(null);
+      setRoom(null);
+      setGame(null);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 via-amber-500 to-emerald-500 p-1 flex items-center justify-center shadow-xl shadow-amber-500/20 animate-pulse">
+          <div className="w-full h-full bg-black rounded-xl flex items-center justify-center text-2xl font-black text-amber-400">
+            🎲
+          </div>
+        </div>
+        <h1 className="text-xl font-black bg-gradient-to-r from-red-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent mt-4">
+          LooDoo : লুডু
+        </h1>
+        <p className="text-xs text-neutral-400 mt-1">Connecting...</p>
+      </div>
+    );
+  }
+
+  // Active game view vs Lobby vs Home Screen
+  const isGameActive = room && game && (room.status === 'PLAYING' || room.status === 'FINISHED');
+  const isLobbyActive = room && (!game || room.status === 'OPEN' || room.status === 'READY');
+
+  const myPlayer = user ? players[user.uid] : null;
+  const myColor = myPlayer?.color || 'red';
+
+  return (
+    <div className="min-h-screen bg-black text-neutral-100 flex flex-col selection:bg-amber-500 selection:text-neutral-950 font-sans">
+      {/* Top Navigation Header */}
+      <Header
+        user={user}
+        language={language}
+        onLanguageToggle={handleLanguageToggle}
+        onEditProfile={() => setShowEditProfile(true)}
+        onGoogleSignIn={handleGoogleSignIn}
+        onHowToPlay={() => setShowHowToPlay(true)}
+        roomCode={room?.roomCode}
+      />
+
+      {/* Offline Toast Banner */}
+      {!isOnline && (
+        <div className="bg-amber-950/90 border-b border-amber-600 text-amber-200 px-4 py-2 text-xs flex items-center justify-center gap-2 text-center sticky top-0 z-50 backdrop-blur">
+          <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>{getTranslation(language, 'offline')} - Reconnecting to game network...</span>
+        </div>
+      )}
+
+      {/* Main Container */}
+      <main className="flex-1 w-full max-w-6xl mx-auto p-2 sm:p-4 md:p-6 flex flex-col justify-center">
+        {/* VIEW 1: Active Game Board Screen */}
+        {isGameActive && game && room && user && (
+          <div>
+            {/* ================= DESKTOP 3-COLUMN LAYOUT (lg and above) ================= */}
+            <div className="hidden lg:flex flex-row items-start justify-center gap-6 w-full">
+              {/* Left Column: Player Cards, Voice, Reactions & Tools */}
+              <div className="w-72 flex flex-col gap-3 shrink-0">
+                <VoicePanel
+                  roomId={room.roomId}
+                  myUid={user.uid}
+                  language={language}
+                />
+
+                <TurnIndicator
+                  game={game}
+                  players={mergedPlayers}
+                  myUid={user.uid}
+                  language={language}
+                />
+
+                <div className="grid grid-cols-1 gap-2">
+                  {game.playerOrder.map((uid) => {
+                    const p = mergedPlayers[uid] || players[uid];
+                    if (!p) return null;
+                    return (
+                      <PlayerCard
+                        key={uid}
+                        player={p}
+                        isCurrentTurn={game.currentPlayerUid === uid}
+                        isAdmin={room.adminUid === uid}
+                        game={game}
+                        language={language}
+                        isMe={uid === user.uid}
+                      />
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <QuickReactions roomId={room.roomId} user={user} />
+                  <button
+                    onClick={() => setShowHistoryModal(true)}
+                    className="px-3 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <History className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{getTranslation(language, 'myRooms')}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Center Column: 15x15 Ludo Board */}
+              <div className="flex flex-col items-center gap-3 w-full max-w-[540px]">
+                <LudoBoard
+                  game={game}
+                  players={mergedPlayers}
+                  currentPlayerUid={game.currentPlayerUid}
+                  myUid={user.uid}
+                  legalMoves={legalMoves}
+                  onTokenClick={handleTokenClick}
+                />
+
+                {actionError && (
+                  <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1.5 rounded-lg text-center">
+                    {actionError}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: 3D Dice & Big Roll Button */}
+              <div className="w-64 flex flex-col items-center justify-center p-4 rounded-2xl bg-neutral-950 border border-neutral-850 shadow-xl">
+                <DiceComponent
+                  diceValue={game.diceValue}
+                  isRolling={isRolling}
+                  canRoll={
+                    game.currentPlayerUid === user.uid &&
+                    (game.status === 'AWAITING_ROLL' || game.status === 'EXTRA_ROLL') &&
+                    !game.diceRolled
+                  }
+                  consecutiveSixes={game.consecutiveSixes || 0}
+                  playerColor={myColor}
+                  language={language}
+                  onRoll={handleRollDice}
+                />
+              </div>
+            </div>
+
+            {/* ================= MOBILE-OPTIMIZED SINGLE-VIEW LAYOUT (< lg) ================= */}
+            <div className="flex lg:hidden flex-col items-center gap-3 w-full max-w-lg mx-auto">
+              {/* Mobile 4-Player Compact Horizontal Status Strip */}
+              <div className="w-full grid grid-cols-4 gap-1.5 bg-neutral-950 border border-neutral-850 p-2 rounded-2xl shadow">
+                {game.playerOrder.map((uid) => {
+                  const p = mergedPlayers[uid] || players[uid];
+                  if (!p) return null;
+                  const isCurrent = game.currentPlayerUid === uid;
+                  const isMe = uid === user.uid;
+                  const color = p.color || 'red';
+                  const tokensHome = countTokensHome(uid, game.tokens);
+
+                  const colorStyles = {
+                    red: 'border-red-500 bg-red-950/30 text-red-400',
+                    green: 'border-emerald-500 bg-emerald-950/30 text-emerald-400',
+                    yellow: 'border-amber-400 bg-amber-950/30 text-amber-400',
+                    blue: 'border-blue-500 bg-blue-950/30 text-blue-400',
+                  }[color] || 'border-neutral-700 bg-neutral-900 text-neutral-300';
+
+                  return (
+                    <div
+                      key={uid}
+                      className={`relative flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all ${
+                        isCurrent
+                          ? 'border-amber-400 bg-amber-950/40 ring-2 ring-amber-400 shadow-md animate-pulse'
+                          : colorStyles
+                      }`}
+                    >
+                      {/* Speaking ping indicator */}
+                      {p.isSpeaking && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                      )}
+
+                      <div className="flex items-center gap-1">
+                        <span className="text-base sm:text-lg leading-none">{p.avatar || '👤'}</span>
+                        <span className="text-[10px] font-black">{p.slot}</span>
+                      </div>
+
+                      <span className="text-[10px] font-bold text-white truncate max-w-[65px] text-center mt-0.5">
+                        {isMe ? 'You' : p.displayName}
+                      </span>
+
+                      {/* Home Tokens Badge */}
+                      <span className="text-[9px] font-mono font-bold text-neutral-300 mt-0.5">
+                        {tokensHome}/4 🏆
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Voice & Tool Quick Bar */}
+              <div className="w-full flex items-center justify-between gap-2">
+                <div className="flex-1">
+                  <VoicePanel
+                    roomId={room.roomId}
+                    myUid={user.uid}
+                    language={language}
+                  />
+                </div>
+                <button
+                  onClick={() => setShowHistoryModal(true)}
+                  className="px-2.5 py-2 rounded-xl bg-neutral-950 border border-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold flex items-center gap-1 shrink-0"
+                  title={getTranslation(language, 'myRooms')}
+                >
+                  <History className="w-3.5 h-3.5 text-amber-400" />
+                </button>
+              </div>
+
+              {/* Mobile Centered Board */}
+              <div className="w-full flex flex-col items-center">
+                <LudoBoard
+                  game={game}
+                  players={mergedPlayers}
+                  currentPlayerUid={game.currentPlayerUid}
+                  myUid={user.uid}
+                  legalMoves={legalMoves}
+                  onTokenClick={handleTokenClick}
+                />
+
+                {actionError && (
+                  <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1 rounded-lg text-center mt-1">
+                    {actionError}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Action Dock: Turn Status + Large Dice Action + Reactions */}
+              <div className="w-full flex flex-col gap-2.5 bg-neutral-950 border border-neutral-850 p-3 rounded-2xl shadow-xl">
+                <TurnIndicator
+                  game={game}
+                  players={mergedPlayers}
+                  myUid={user.uid}
+                  language={language}
+                />
+
+                <DiceComponent
+                  diceValue={game.diceValue}
+                  isRolling={isRolling}
+                  canRoll={
+                    game.currentPlayerUid === user.uid &&
+                    (game.status === 'AWAITING_ROLL' || game.status === 'EXTRA_ROLL') &&
+                    !game.diceRolled
+                  }
+                  consecutiveSixes={game.consecutiveSixes || 0}
+                  playerColor={myColor}
+                  language={language}
+                  onRoll={handleRollDice}
+                />
+
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-neutral-850">
+                  <QuickReactions roomId={room.roomId} user={user} />
+                  <button
+                    onClick={handleLeaveRoom}
+                    className="px-2.5 py-1.5 rounded-lg bg-red-950/40 border border-red-800/60 text-red-400 text-xs font-bold flex items-center gap-1 active:scale-95"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>{getTranslation(language, 'leaveRoom')}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: Room Lobby Screen */}
+        {isLobbyActive && room && user && (
+          <LobbyScreen
+            room={room}
+            players={mergedPlayers}
+            currentUser={user}
+            language={language}
+            onLeaveRoom={handleLeaveRoom}
+          />
+        )}
+
+        {/* VIEW 3: Main Welcome Screen */}
+        {!room && user && (
+          <div className="w-full max-w-xl mx-auto flex flex-col items-center gap-5 py-4 sm:py-6 text-center">
+            {/* Hero Ludo Logo */}
+            <div className="relative">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-red-500 via-amber-500 via-emerald-500 to-blue-500 p-1 shadow-2xl shadow-amber-500/25 flex items-center justify-center">
+                <div className="w-full h-full bg-black rounded-2xl flex items-center justify-center text-4xl sm:text-5xl drop-shadow">
+                  🎲
+                </div>
+              </div>
+              <span className="absolute -bottom-2 -right-2 px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-neutral-950 text-[10px] font-black tracking-wider uppercase shadow-md">
+                Bangladesh
+              </span>
+            </div>
+
+            {/* Title & Tagline */}
+            <div className="flex flex-col gap-1">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+                <span className="bg-gradient-to-r from-red-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">
+                  LooDoo
+                </span>{' '}
+                :{' '}
+                <span className="bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent">
+                  লুডু
+                </span>
+              </h1>
+              <p className="text-xs sm:text-sm text-neutral-400 max-w-sm mx-auto">
+                {language === 'bn'
+                  ? 'লাইভ ভয়েস চ্যাটসহ অনলাইন মাল্টিপ্লেয়ার লুডু'
+                  : 'Online multiplayer Ludo with live voice chat'}
+              </p>
+            </div>
+
+            {/* Current Player Profile Bar (Changeable Emoji Photo & Nickname) */}
+            <div className="w-full bg-neutral-950 border border-neutral-800/80 rounded-2xl p-3 sm:p-3.5 flex items-center justify-between shadow-lg shadow-black/60">
+              <div className="flex items-center gap-3">
+                <button
+                  id="home-avatar-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowEditProfile(true);
+                  }}
+                  title={language === 'bn' ? 'ইমোজি পরিবর্তন করুন' : 'Change emoji avatar'}
+                  className="relative group w-11 h-11 rounded-xl bg-black border border-neutral-700/80 hover:border-amber-400 flex items-center justify-center text-2xl shadow-inner cursor-pointer transition-all hover:scale-105 shrink-0"
+                >
+                  <span>{user.avatar || '🎲'}</span>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 text-neutral-950 flex items-center justify-center text-[10px] shadow">
+                    <Edit3 className="w-2.5 h-2.5" />
+                  </div>
+                </button>
+
+                <div className="text-left flex flex-col min-w-0">
+                  <span className="text-[11px] text-neutral-400 font-medium">
+                    {language === 'bn' ? 'আপনার ডাকনাম' : 'Your Nickname'}
+                  </span>
+                  <span className="text-sm font-bold text-amber-400 truncate max-w-[150px] sm:max-w-[220px] flex items-center gap-1.5">
+                    {user.displayName}
+                    {user.isAnonymous && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 font-normal border border-neutral-800">
+                        {language === 'bn' ? 'গেস্ট' : 'Guest'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                id="home-edit-profile-btn"
+                onClick={() => {
+                  soundFx.click();
+                  setShowEditProfile(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-neutral-900 to-neutral-850 hover:from-neutral-850 hover:to-neutral-800 text-neutral-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-neutral-750 shrink-0 shadow-sm"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                <span>{language === 'bn' ? 'নাম ও ইমোজি বদলান' : 'Edit Profile'}</span>
+              </button>
+            </div>
+
+            {/* DEDICATED 1-TAP INSTALL PWA ON HOME SCREEN BUTTON */}
+            <InstallPwaButton language={language} variant="prominent" />
+
+            {/* TWO EQUALLY SIZED AND DISTINCT ENTRY OPTIONS */}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full items-stretch">
+              {/* Option 1: CREATE ROOM */}
+              <div className="w-full bg-neutral-950 border border-neutral-800 hover:border-amber-500/50 rounded-3xl p-5 flex flex-col justify-between gap-4 shadow-xl shadow-black/80 transition-all text-left">
+                <div className="flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500/20 via-amber-500/20 to-orange-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner">
+                    <PlusCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black text-white tracking-tight uppercase">
+                      {getTranslation(language, 'createRoom')}
+                    </h2>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      {language === 'bn'
+                        ? 'নতুন রুম তৈরি করে বন্ধুদের আমন্ত্রণ জানান'
+                        : 'Host a new custom match and invite your friends'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  id="home-create-room-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowCreateModal(true);
+                  }}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-red-600 via-amber-500 to-emerald-600 hover:brightness-110 text-white font-black text-sm sm:text-base shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4 shrink-0" />
+                  <span>{getTranslation(language, 'createRoom')}</span>
+                </button>
+              </div>
+
+              {/* Option 2: JOIN ROOM */}
+              <div className="w-full bg-neutral-950 border border-neutral-800 hover:border-emerald-500/50 rounded-3xl p-5 flex flex-col justify-between gap-4 shadow-xl shadow-black/80 transition-all text-left">
+                <div className="flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/20 to-cyan-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-inner">
+                    <KeyRound className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-black text-white tracking-tight uppercase">
+                      {getTranslation(language, 'joinRoom')}
+                    </h2>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      {language === 'bn'
+                        ? 'রুম নম্বর দিয়ে সরাসরি খেলায় প্রবেশ করুন'
+                        : 'Enter the room number to jump into an existing match'}
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleQuickJoin} className="flex flex-col gap-2.5">
+                  <input
+                    id="quick-room-code-input"
+                    type="text"
+                    maxLength={12}
+                    value={quickRoomCode}
+                    onChange={(e) => {
+                      setQuickRoomCode(e.target.value);
+                      setQuickJoinError(null);
+                    }}
+                    placeholder="enter room number"
+                    className="w-full bg-black border border-neutral-700/80 rounded-xl px-3.5 py-2.5 text-center text-sm sm:text-base font-mono font-bold tracking-wider text-amber-400 placeholder:text-neutral-500 placeholder:font-sans placeholder:text-xs placeholder:tracking-normal focus:outline-none focus:border-cyan-400"
+                  />
+                  <button
+                    id="quick-room-join-btn"
+                    type="submit"
+                    disabled={quickJoinLoading || !quickRoomCode.trim()}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 font-black text-sm sm:text-base shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                  >
+                    {quickJoinLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        <span>{language === 'bn' ? 'যুক্ত হচ্ছে...' : 'Joining Room...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <LogIn className="w-4 h-4 shrink-0" />
+                        <span>{getTranslation(language, 'joinRoom')}</span>
+                      </>
+                    )}
+                  </button>
+                  {quickJoinError && (
+                    <div className="text-[11px] text-red-400 bg-red-950/60 border border-red-800/80 px-2.5 py-1.5 rounded-lg text-center">
+                      {quickJoinError}
+                    </div>
+                  )}
+                </form>
+              </div>
+            </div>
+
+            {/* BOTTOM ACTIONS: PLAY ALONE (SMALLER GRADIENT BUTTON) & HOW TO PLAY */}
+            <div className="w-full flex flex-col items-center gap-3 pt-1">
+              {/* PLAY ALONE / একলা খেলো BUTTON */}
+              <button
+                id="home-play-alone-btn"
+                onClick={handlePlayAlone}
+                disabled={soloLoading}
+                className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:brightness-115 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2 border border-pink-400/40 cursor-pointer transition-all"
+              >
+                {soloLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-pink-200" />
+                ) : (
+                  <Bot className="w-4 h-4 text-pink-200" />
+                )}
+                <span>
+                  {soloLoading
+                    ? (language === 'bn' ? 'শুরু হচ্ছে...' : 'Starting...')
+                    : (language === 'bn' ? 'একলা খেলো' : 'Play Alone')}
+                </span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-black/30 text-pink-100">
+                  vs AI
+                </span>
+              </button>
+
+              {soloError && (
+                <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1.5 rounded-lg text-center">
+                  {soloError}
+                </div>
+              )}
+
+              {/* How to Play rulebook link */}
+              <button
+                id="home-how-to-play-btn"
+                onClick={() => {
+                  soundFx.click();
+                  setShowHowToPlay(true);
+                }}
+                className="py-1.5 px-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                <span>{getTranslation(language, 'howToPlay')}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* MODALS */}
+      {/* Create Room Modal */}
+      {showCreateModal && user && (
+        <CreateRoomModal
+          user={user}
+          language={language}
+          onRoomCreated={(roomId) => {
+            setShowCreateModal(false);
+            setCurrentRoomId(roomId);
+          }}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
+
+      {/* Join Room Modal */}
+      {showJoinModal && user && (
+        <JoinRoomModal
+          user={user}
+          language={language}
+          initialCode={initialJoinCode}
+          onJoined={(roomId) => {
+            setShowJoinModal(false);
+            setCurrentRoomId(roomId);
+          }}
+          onClose={() => setShowJoinModal(false)}
+        />
+      )}
+
+      {/* How To Play Modal */}
+      {showHowToPlay && (
+        <HowToPlayModal
+          language={language}
+          onClose={() => setShowHowToPlay(false)}
+        />
+      )}
+
+      {/* Room Match History Modal */}
+      {showHistoryModal && room && (
+        <RoomHistoryModal
+          roomId={room.roomId}
+          language={language}
+          onClose={() => setShowHistoryModal(false)}
+        />
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && user && (
+        <EditProfileModal
+          user={user}
+          language={language}
+          onUpdate={(updated) => setUser(updated)}
+          onClose={() => setShowEditProfile(false)}
+        />
+      )}
+
+      {/* Victory / Game Result Modal */}
+      {game && game.status === 'GAME_OVER' && room && user && (
+        <GameResultModal
+          game={game}
+          room={room}
+          players={players}
+          currentUserUid={user.uid}
+          language={language}
+          onBackToLobby={() => {
+            // Keep in room but let admin manage rematch
+          }}
+        />
+      )}
+    </div>
+  );
+}

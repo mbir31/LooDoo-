@@ -1,0 +1,17 @@
+{
+  "name": "LooDoo : লুডু",
+  "short_name": "LooDoo",
+  "description": "Production-grade Real-Time Multiplayer Bangladeshi Ludo PWA with WebRTC Live Voice Chat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#0c0a09",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

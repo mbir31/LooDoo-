@@ -1,0 +1,6 @@
+{
+  "name": "LooDoo : লুডু",
+  "description": "Production-grade real-time multiplayer Bangladeshi Ludo PWA with WebRTC live voice chat and persistent rooms.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+@layer utilities {
+  .grid-cols-15 {
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+  }
+  .grid-rows-15 {
+    grid-template-rows: repeat(15, minmax(0, 1fr));
+  }
+}
+
+html, body, #root {
+  background-color: #000000;
+  background: #000000;
+  color: #f5f5f4;
+  font-family: 'Hind Siliguri', 'Outfit', sans-serif;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100vh;
+}
+

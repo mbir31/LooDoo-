@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "UserProfile": {
+      "path": "users/{userId}",
+      "fields": {
+        "uid": "string",
+        "displayName": "string",
+        "preferredLanguage": "string",
+        "avatar": "string",
+        "activeRoomId": "string?",
+        "createdAt": "number",
+        "lastSeenAt": "number",
+        "isAnonymous": "boolean",
+        "email": "string?"
+      }
+    },
+    "Room": {
+      "path": "rooms/{roomId}",
+      "fields": {
+        "roomId": "string",
+        "roomCode": "string",
+        "adminUid": "string",
+        "status": "string",
+        "maxPlayers": "number",
+        "createdAt": "number",
+        "updatedAt": "number",
+        "currentGameId": "string?",
+        "lastGameId": "string?",
+        "settings": "map"
+      }
+    },
+    "RoomPlayer": {
+      "path": "rooms/{roomId}/players/{playerId}",
+      "fields": {
+        "uid": "string",
+        "playerId": "string",
+        "slot": "string",
+        "displayName": "string",
+        "color": "string",
+        "avatar": "string",
+        "ready": "boolean",
+        "connected": "boolean",
+        "status": "string",
+        "joinedAt": "number",
+        "lastSeenAt": "number",
+        "voiceEnabled": "boolean?"
+      }
+    },
+    "Game": {
+      "path": "rooms/{roomId}/games/{gameId}",
+      "fields": {
+        "gameId": "string",
+        "roomId": "string",
+        "status": "string",
+        "playerOrder": "array",
+        "currentPlayerUid": "string",
+        "turnNumber": "number",
+        "diceValue": "number?",
+        "diceRolled": "boolean",
+        "consecutiveSixes": "number",
+        "turnStartedAt": "number",
+        "turnExpiresAt": "number",
+        "winnerUid": "string?",
+        "rankings": "array",
+        "tokens": "map",
+        "version": "number",
+        "startedAt": "number",
+        "endedAt": "number?",
+        "lastAction": "string",
+        "lastActionAt": "number"
+      }
+    }
+  }
+}
