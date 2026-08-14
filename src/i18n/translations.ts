@@ -17,7 +17,11 @@ export const translations = {
     anonymous: 'Guest',
     connected: 'Connected',
     reconnecting: 'Reconnecting...',
+    reconnectNow: 'Reconnect Now',
+    reconnectingServer: 'Reconnecting to game server...',
+    connectionRestored: 'Connection restored!',
     offline: 'Offline',
+    offlineDesc: 'You are offline. Real-time updates paused.',
 
     // Home Screen
     createRoom: 'Create Room',
@@ -207,7 +211,11 @@ export const translations = {
     anonymous: 'গেস্ট',
     connected: 'সংযুক্ত',
     reconnecting: 'পুনঃসংযোগ হচ্ছে...',
+    reconnectNow: 'এখনই পুনরায় যুক্ত করুন',
+    reconnectingServer: 'গেমিং সার্ভারের সাথে পুনরায় সংযোগ করা হচ্ছে...',
+    connectionRestored: 'সংযোগ সফলভাবে পুনঃস্থাপিত হয়েছে!',
     offline: 'অফলাইন',
+    offlineDesc: 'আপনি অফলাইনে আছেন। লাইভ সিঙ্ক সাময়িক স্থগিত।',
 
     // Home Screen
     createRoom: 'রুম তৈরি করুন',

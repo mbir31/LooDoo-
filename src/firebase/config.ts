@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence, inMemoryPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
@@ -22,6 +22,17 @@ export const db = firebaseConfigData?.firestoreDatabaseId && firebaseConfigData.
   : getFirestore(app);
 
 export const auth = getAuth(app);
+
+// Enforce permanent local browser persistence across page reloads and sessions
+try {
+  setPersistence(auth, browserLocalPersistence).catch(() => {
+    // Fallback if browser environment restricts third-party local storage
+    try {
+      setPersistence(auth, inMemoryPersistence).catch(() => {});
+    } catch (_) {}
+  });
+} catch (_) {}
+
 export const googleProvider = new GoogleAuthProvider();
 
 export default app;

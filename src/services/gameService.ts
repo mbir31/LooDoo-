@@ -10,6 +10,7 @@ import {
   limit,
   onSnapshot,
   Unsubscribe,
+  enableNetwork,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import {
@@ -1477,3 +1478,98 @@ export async function sendReaction(
   };
   firestoreBackgroundSync(setDoc(reactionRef, reaction));
 }
+
+/**
+ * Manually trigger Firestore network reconnect and re-sync room, players, and game state
+ */
+export async function reconnectFirestoreAndSync(roomId?: string | null): Promise<{
+  success: boolean;
+  room?: RoomDocument | null;
+  players?: Record<string, RoomPlayer>;
+  game?: GameDocument | null;
+  error?: string;
+}> {
+  try {
+    // 1. Force enable network in Firestore SDK
+    try {
+      await enableNetwork(db);
+    } catch (netErr) {
+      console.debug('enableNetwork notice:', netErr);
+    }
+
+    if (!roomId) {
+      return { success: true };
+    }
+
+    // 2. Fetch fresh room doc from Firestore
+    const roomRef = doc(db, 'rooms', roomId);
+    const roomSnap = await getDoc(roomRef);
+
+    if (!roomSnap.exists()) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    const roomData = roomSnap.data() as RoomDocument;
+
+    // 3. Fetch players collection
+    const playersRef = collection(db, 'rooms', roomId, 'players');
+    const playersSnap = await getDocs(playersRef);
+    const playersMap: Record<string, RoomPlayer> = {};
+    playersSnap.forEach((pDoc) => {
+      playersMap[pDoc.id] = pDoc.data() as RoomPlayer;
+    });
+
+    // 4. Fetch current game if present
+    let gameData: GameDocument | null = null;
+    if (roomData.currentGameId) {
+      const gameRef = doc(db, 'rooms', roomId, 'games', roomData.currentGameId);
+      const gameSnap = await getDoc(gameRef);
+      if (gameSnap.exists()) {
+        gameData = gameSnap.data() as GameDocument;
+      }
+    }
+
+    // 5. Update local memory cache and notify all active listeners
+    let cached = localStore.get(roomId);
+    if (!cached) {
+      cached = {
+        room: roomData,
+        players: playersMap,
+        game: gameData,
+        events: [],
+      };
+      localStore.set(roomId, cached);
+    } else {
+      cached.room = roomData;
+      if (Object.keys(playersMap).length > 0) cached.players = playersMap;
+      if (gameData) cached.game = gameData;
+    }
+
+    notifyRoomSubscribers(roomId, cached.room);
+    notifyPlayersSubscribers(roomId, cached.players);
+    notifyGameSubscribers(roomId, cached.game);
+    broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: cached.room });
+    broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
+    if (cached.game) {
+      broadcastLocalUpdate('GAME_UPDATED', roomId, { game: cached.game });
+    }
+
+    return {
+      success: true,
+      room: cached.room,
+      players: cached.players,
+      game: cached.game,
+    };
+  } catch (err: any) {
+    console.warn('Manual Firestore sync notice:', err);
+    const cached = roomId ? localStore.get(roomId) : undefined;
+    return {
+      success: false,
+      room: cached?.room,
+      players: cached?.players,
+      game: cached?.game,
+      error: err?.message || 'Reconnection error',
+    };
+  }
+}
+

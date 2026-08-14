@@ -76,6 +76,7 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
 ## 🎮 Complete Feature Arsenal
 
 ### 🎲 Gameplay & Board Mechanics
+- **Engraved Yard Player Names**: Every yard features the assigned player's name and emoji avatar engraved directly into the inner white space in that yard's matching theme color (Emerald for Green, Amber for Yellow, Crimson for Red, Royal Blue for Blue), visible to all participants in real time with active turn highlights.
 - **Accurate Quadrant Way Alignment**: Redesigned 15x15 board geometry with each player's colored start paths, star safe sanctuaries, and home columns properly connected to the right of their respective yards.
 - **Movable Token Visual Highlight Animation**: Active player's legal pieces feature dual-wave harmonic beacon pulses, hover diamonds, bouncing spring translations, and prominent high-contrast glowing auras.
 - **Dynamic Turn Indicator Transitions**: Spring-animated turn switches with color-themed auras, active player pulses, and real-time roll alerts.
@@ -90,6 +91,8 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
   - 🪙 *Imperial Brass & Emerald*
 
 ### 🌐 Online Multiplayer & Room Networking
+- **Interactive Offline Detection & In-Place 'Reconnect Now'**: Live network monitoring with a dedicated 'Reconnect Now' button that manually re-enables Firestore network channels (`enableNetwork`) and re-initializes room, player roster, and board state without forcing a full page reload or losing active view states.
+- **Persistent Seamless Firebase Authentication**: Configured with browser local persistence (`browserLocalPersistence`) and automatic session recovery, guaranteeing permanent multi-session connectivity without developer-side approvals or auth expiration prompts.
 - **Direct 6-Digit Room Resolution**: Instant O(1) cross-device room lookup directly via Firestore document identifiers and multi-tier query fallbacks.
 - **Instant 6-Digit Room Codes**: Create private rooms and invite friends via WhatsApp with 1 tap.
 - **Cross-Device Reliability**: Automatic anonymous authentication ensures players on any mobile or desktop browser immediately sync with host rooms without login friction.

@@ -146,16 +146,42 @@ export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
 }
 
 /**
- * Optional Login anonymously
+ * Automatic seamless authentication: verifies persistent user session or logs in anonymously
  */
 export async function loginAsGuest(): Promise<User | null> {
   try {
+    if (auth.currentUser) {
+      return auth.currentUser;
+    }
     const credential = await signInAnonymously(auth);
     return credential.user;
   } catch (error: any) {
-    // Admin restricted or disabled on project is totally fine - we use local guest profile
+    // If anonymous login is already in progress or completed
+    if (auth.currentUser) {
+      return auth.currentUser;
+    }
+    console.debug('Guest login notice:', error?.message || error);
     return null;
   }
+}
+
+/**
+ * Ensures user is authenticated seamlessly without requiring developer approvals
+ */
+export async function ensurePersistentAuth(): Promise<UserProfile> {
+  const local = getLocalGuestProfile();
+  try {
+    if (auth.currentUser) {
+      return await getOrCreateUserProfile(auth.currentUser);
+    }
+    const user = await loginAsGuest();
+    if (user) {
+      return await getOrCreateUserProfile(user);
+    }
+  } catch (e) {
+    console.debug('Persistent auth verify notice:', e);
+  }
+  return local;
 }
 
 /**

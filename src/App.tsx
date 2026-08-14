@@ -17,6 +17,7 @@ import {
   loginAsGuest,
   loginWithGoogle,
   updateUserProfile,
+  ensurePersistentAuth,
 } from './services/authService';
 import {
   rollDice as serviceRollDice,
@@ -29,6 +30,7 @@ import {
   subscribeToRoom,
   subscribeToPlayers,
   subscribeToGame,
+  reconnectFirestoreAndSync,
 } from './services/gameService';
 import { getLegalMoves, hasPlayerWon, countTokensHome } from './game-engine/engine';
 import { getTranslation } from './i18n/translations';
@@ -69,9 +71,13 @@ import {
   Edit3,
   Bot,
   WifiOff,
+  Wifi,
   Radio,
   LogOut,
   Loader2,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function App() {
@@ -82,11 +88,21 @@ export default function App() {
     return local.preferredLanguage || 'bn';
   });
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [reconnectSuccess, setReconnectSuccess] = useState(false);
+  const [reconnectError, setReconnectError] = useState<string | null>(null);
 
   // Network offline detection
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
+    const handleOnline = () => {
+      setIsOnline(true);
+      setReconnectSuccess(true);
+      setTimeout(() => setReconnectSuccess(false), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setReconnectSuccess(false);
+    };
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {
@@ -545,6 +561,55 @@ export default function App() {
     }
   };
 
+  // Manual Reconnect handler without full page reload
+  const handleManualReconnect = async () => {
+    if (isReconnecting) return;
+    soundFx.click();
+    setIsReconnecting(true);
+    setReconnectError(null);
+
+    try {
+      // 1. Re-verify & establish persistent Firebase authentication
+      await ensurePersistentAuth();
+
+      // 2. Perform manual Firestore network reconnection & state re-initialization
+      const syncResult = await reconnectFirestoreAndSync(currentRoomId);
+
+      // 3. Verify online status
+      const online = navigator.onLine;
+      setIsOnline(online || syncResult.success);
+
+      if (syncResult.success) {
+        if (syncResult.room) setRoom(syncResult.room);
+        if (syncResult.players && Object.keys(syncResult.players).length > 0) {
+          setPlayers(syncResult.players);
+        }
+        if (syncResult.game) setGame(syncResult.game);
+
+        setReconnectSuccess(true);
+        setTimeout(() => {
+          setReconnectSuccess(false);
+        }, 3500);
+      } else if (!online) {
+        setReconnectError(
+          language === 'bn'
+            ? 'ইন্টারনেট সংযোগ পাওয়া যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।'
+            : 'No internet connection detected. Please check your network and try again.'
+        );
+        setTimeout(() => setReconnectError(null), 4500);
+      }
+    } catch (err: any) {
+      console.warn('Manual reconnect error:', err);
+      setReconnectError(
+        err?.message ||
+          (language === 'bn' ? 'সংযোগ পুনঃস্থাপনে সমস্যা হয়েছে' : 'Reconnection attempt failed')
+      );
+      setTimeout(() => setReconnectError(null), 4500);
+    } finally {
+      setIsReconnecting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-center">
@@ -592,13 +657,66 @@ export default function App() {
         roomCode={room?.roomCode}
       />
 
-      {/* Offline Toast Banner */}
-      {!isOnline && (
-        <div className="bg-amber-950/90 border-b border-amber-600 text-amber-200 px-4 py-2 text-xs flex items-center justify-center gap-2 text-center sticky top-0 z-50 backdrop-blur">
-          <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
-          <span>{getTranslation(language, 'offline')} - Reconnecting to game network...</span>
+      {/* Offline Toast Banner & Reconnect Control */}
+      {!isOnline ? (
+        <div
+          id="offline-detection-banner"
+          className="bg-neutral-950/95 border-b border-amber-500/50 text-amber-200 px-3 sm:px-4 py-2.5 text-xs flex flex-wrap items-center justify-between gap-2.5 sticky top-0 z-50 backdrop-blur-md shadow-lg shadow-black/80 transition-all"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center shrink-0">
+              <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 min-w-0">
+              <span className="font-bold text-amber-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping inline-block" />
+                {getTranslation(language, 'offline')}
+              </span>
+              <span className="text-neutral-300 text-xs truncate">
+                {isReconnecting
+                  ? getTranslation(language, 'reconnectingServer')
+                  : getTranslation(language, 'offlineDesc')}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
+            <button
+              id="offline-reconnect-now-btn"
+              onClick={handleManualReconnect}
+              disabled={isReconnecting}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:brightness-110 active:scale-95 disabled:opacity-60 text-neutral-950 font-black text-xs shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition-all cursor-pointer border border-amber-300/40"
+            >
+              {isReconnecting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{getTranslation(language, 'reconnecting')}</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{getTranslation(language, 'reconnectNow')}</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {reconnectError && (
+            <div className="w-full flex items-center gap-1.5 text-[11px] text-red-300 bg-red-950/70 border border-red-800/80 px-2.5 py-1 rounded-lg mt-0.5">
+              <AlertCircle className="w-3 h-3 text-red-400 shrink-0" />
+              <span>{reconnectError}</span>
+            </div>
+          )}
         </div>
-      )}
+      ) : reconnectSuccess ? (
+        <div
+          id="connection-restored-banner"
+          className="bg-emerald-950/95 border-b border-emerald-500/50 text-emerald-200 px-4 py-2 text-xs flex items-center justify-center gap-2 sticky top-0 z-50 backdrop-blur-md shadow-lg shadow-black/80 transition-all animate-fadeIn"
+        >
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span className="font-semibold">{getTranslation(language, 'connectionRestored')}</span>
+        </div>
+      ) : null}
 
       {/* Main Container */}
       <main className="flex-1 w-full max-w-6xl mx-auto p-2 sm:p-4 md:p-6 flex flex-col justify-center">

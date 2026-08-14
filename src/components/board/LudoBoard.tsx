@@ -109,6 +109,60 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
 
   const [hoveredTokenId, setHoveredTokenId] = useState<number | null>(null);
 
+  // Helper to extract player assigned to each Yard color
+  const getYardPlayer = (color: PlayerColor) => {
+    if (!players) return null;
+    const playerList = Object.values(players) as any[];
+
+    const slotByColor: Record<PlayerColor, PlayerSlot> = {
+      red: 'P1',
+      green: 'P2',
+      yellow: 'P3',
+      blue: 'P4',
+    };
+    const targetSlot = slotByColor[color];
+
+    // 1. Check by explicit color
+    let p = playerList.find((item) => item && (item.color === color || item.playerColor === color));
+
+    // 2. Fallback check by slot
+    if (!p) {
+      p = playerList.find((item) => item && item.slot === targetSlot);
+    }
+
+    // 3. Fallback direct key in players object
+    if (!p && (players as any)[targetSlot]) {
+      p = (players as any)[targetSlot];
+    }
+    if (!p && (players as any)[color]) {
+      p = (players as any)[color];
+    }
+
+    if (!p) return null;
+
+    const rawName =
+      p.displayName ||
+      p.name ||
+      (targetSlot === 'P1'
+        ? 'Player 1'
+        : targetSlot === 'P2'
+        ? 'Player 2'
+        : targetSlot === 'P3'
+        ? 'Player 3'
+        : 'Player 4');
+    const uid = p.uid || p.id || targetSlot;
+    const isMe = uid === myUid;
+    const isCurrentTurn = currentPlayerUid === uid || currentPlayerUid === targetSlot;
+
+    return {
+      name: rawName,
+      avatar: p.avatar,
+      isMe,
+      isCurrentTurn,
+      slot: p.slot || targetSlot,
+    };
+  };
+
   // Map uid to slot
   const slotMap = useMemo(() => {
     const map: Record<string, PlayerSlot> = {};
@@ -275,72 +329,196 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
         
         {/* ================= 4 REALISTIC YARDS ================= */}
         {/* Top-Left: Green Yard */}
-        <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 p-2 sm:p-3 flex items-center justify-center border-r-4 border-b-4 border-neutral-900 shadow-lg z-0">
-          <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-emerald-700/40 p-2 relative overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-emerald-100/60 to-transparent pointer-events-none" />
-            <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-emerald-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-emerald-600/30"
-                >
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-500/25 border border-emerald-600/40 shadow-inner" />
+        {(() => {
+          const greenPlayer = getYardPlayer('green');
+          return (
+            <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-gradient-to-br from-emerald-500 via-emerald-600 to-emerald-700 p-2 sm:p-3 flex items-center justify-center border-r-4 border-b-4 border-neutral-900 shadow-lg z-0">
+              <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-emerald-700/40 p-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-radial from-emerald-100/60 to-transparent pointer-events-none" />
+                
+                {/* 4 Token Sockets */}
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-emerald-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-emerald-600/30"
+                    >
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-emerald-500/25 border border-emerald-600/40 shadow-inner" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Engraved Player Name in Green Text */}
+                {greenPlayer && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-5 p-1">
+                    <div
+                      className={`max-w-[90%] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-gradient-to-b from-white/95 via-white/90 to-emerald-50/80 border border-emerald-600/35 shadow-[inset_0_1.5px_3px_rgba(4,120,87,0.22),0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center gap-1 transition-all ${
+                        greenPlayer.isCurrentTurn ? 'ring-2 ring-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : ''
+                      }`}
+                      style={{
+                        textShadow: '0 1px 0 rgba(255,255,255,0.95), 0 -0.5px 0.5px rgba(0,0,0,0.18)',
+                      }}
+                      title={greenPlayer.name}
+                    >
+                      {greenPlayer.avatar && (
+                        <span className="text-[10px] sm:text-xs leading-none shrink-0 drop-shadow-xs">
+                          {greenPlayer.avatar}
+                        </span>
+                      )}
+                      <span className="text-[9px] sm:text-[11px] font-black tracking-tight text-emerald-700 uppercase truncate max-w-[65px] sm:max-w-[85px]">
+                        {greenPlayer.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Top-Right: Yellow Yard */}
-        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-2 sm:p-3 flex items-center justify-center border-l-4 border-b-4 border-neutral-900 shadow-lg z-0">
-          <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-amber-600/40 p-2 relative overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-amber-100/60 to-transparent pointer-events-none" />
-            <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-amber-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-amber-600/30"
-                >
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-amber-500/25 border border-amber-600/40 shadow-inner" />
+        {(() => {
+          const yellowPlayer = getYardPlayer('yellow');
+          return (
+            <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-2 sm:p-3 flex items-center justify-center border-l-4 border-b-4 border-neutral-900 shadow-lg z-0">
+              <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-amber-600/40 p-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-radial from-amber-100/60 to-transparent pointer-events-none" />
+                
+                {/* 4 Token Sockets */}
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-amber-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-amber-600/30"
+                    >
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-amber-500/25 border border-amber-600/40 shadow-inner" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Engraved Player Name in Yellow/Amber Text */}
+                {yellowPlayer && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-5 p-1">
+                    <div
+                      className={`max-w-[90%] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-gradient-to-b from-white/95 via-white/90 to-amber-50/80 border border-amber-500/35 shadow-[inset_0_1.5px_3px_rgba(180,83,9,0.22),0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center gap-1 transition-all ${
+                        yellowPlayer.isCurrentTurn ? 'ring-2 ring-amber-500/60 shadow-[0_0_8px_rgba(245,158,11,0.4)]' : ''
+                      }`}
+                      style={{
+                        textShadow: '0 1px 0 rgba(255,255,255,0.95), 0 -0.5px 0.5px rgba(0,0,0,0.18)',
+                      }}
+                      title={yellowPlayer.name}
+                    >
+                      {yellowPlayer.avatar && (
+                        <span className="text-[10px] sm:text-xs leading-none shrink-0 drop-shadow-xs">
+                          {yellowPlayer.avatar}
+                        </span>
+                      )}
+                      <span className="text-[9px] sm:text-[11px] font-black tracking-tight text-amber-700 uppercase truncate max-w-[65px] sm:max-w-[85px]">
+                        {yellowPlayer.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Bottom-Left: Red Yard */}
-        <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-gradient-to-br from-rose-500 via-red-600 to-red-700 p-2 sm:p-3 flex items-center justify-center border-r-4 border-t-4 border-neutral-900 shadow-lg z-0">
-          <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-red-700/40 p-2 relative overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-rose-100/60 to-transparent pointer-events-none" />
-            <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-red-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-red-600/30"
-                >
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500/25 border border-red-600/40 shadow-inner" />
+        {(() => {
+          const redPlayer = getYardPlayer('red');
+          return (
+            <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-gradient-to-br from-rose-500 via-red-600 to-red-700 p-2 sm:p-3 flex items-center justify-center border-r-4 border-t-4 border-neutral-900 shadow-lg z-0">
+              <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-red-700/40 p-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-radial from-rose-100/60 to-transparent pointer-events-none" />
+                
+                {/* 4 Token Sockets */}
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-red-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-red-600/30"
+                    >
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-red-500/25 border border-red-600/40 shadow-inner" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Engraved Player Name in Red Text */}
+                {redPlayer && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-5 p-1">
+                    <div
+                      className={`max-w-[90%] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-gradient-to-b from-white/95 via-white/90 to-rose-50/80 border border-red-500/35 shadow-[inset_0_1.5px_3px_rgba(185,28,28,0.22),0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center gap-1 transition-all ${
+                        redPlayer.isCurrentTurn ? 'ring-2 ring-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : ''
+                      }`}
+                      style={{
+                        textShadow: '0 1px 0 rgba(255,255,255,0.95), 0 -0.5px 0.5px rgba(0,0,0,0.18)',
+                      }}
+                      title={redPlayer.name}
+                    >
+                      {redPlayer.avatar && (
+                        <span className="text-[10px] sm:text-xs leading-none shrink-0 drop-shadow-xs">
+                          {redPlayer.avatar}
+                        </span>
+                      )}
+                      <span className="text-[9px] sm:text-[11px] font-black tracking-tight text-red-700 uppercase truncate max-w-[65px] sm:max-w-[85px]">
+                        {redPlayer.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Bottom-Right: Blue Yard */}
-        <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-2 sm:p-3 flex items-center justify-center border-l-4 border-t-4 border-neutral-900 shadow-lg z-0">
-          <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-blue-700/40 p-2 relative overflow-hidden">
-            <div className="absolute inset-0 bg-radial from-blue-100/60 to-transparent pointer-events-none" />
-            <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
-              {[0, 1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-blue-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-blue-600/30"
-                >
-                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500/25 border border-blue-600/40 shadow-inner" />
+        {(() => {
+          const bluePlayer = getYardPlayer('blue');
+          return (
+            <div className="absolute bottom-0 right-0 w-[40%] h-[40%] bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 p-2 sm:p-3 flex items-center justify-center border-l-4 border-t-4 border-neutral-900 shadow-lg z-0">
+              <div className="w-full h-full bg-white/95 rounded-2xl shadow-inner flex items-center justify-center border-4 border-blue-700/40 p-2 relative overflow-hidden">
+                <div className="absolute inset-0 bg-radial from-blue-100/60 to-transparent pointer-events-none" />
+                
+                {/* 4 Token Sockets */}
+                <div className="grid grid-cols-2 grid-rows-2 gap-3 sm:gap-4 w-4/5 h-4/5">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-full bg-gradient-to-b from-neutral-100 to-neutral-200 border-2 border-blue-500/80 shadow-[inset_0_3px_6px_rgba(0,0,0,0.35)] flex items-center justify-center ring-2 ring-blue-600/30"
+                    >
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-blue-500/25 border border-blue-600/40 shadow-inner" />
+                    </div>
+                  ))}
                 </div>
-              ))}
+
+                {/* Engraved Player Name in Blue Text */}
+                {bluePlayer && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-5 p-1">
+                    <div
+                      className={`max-w-[90%] px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg bg-gradient-to-b from-white/95 via-white/90 to-blue-50/80 border border-blue-500/35 shadow-[inset_0_1.5px_3px_rgba(29,78,216,0.22),0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center gap-1 transition-all ${
+                        bluePlayer.isCurrentTurn ? 'ring-2 ring-blue-500/60 shadow-[0_0_8px_rgba(59,130,246,0.4)]' : ''
+                      }`}
+                      style={{
+                        textShadow: '0 1px 0 rgba(255,255,255,0.95), 0 -0.5px 0.5px rgba(0,0,0,0.18)',
+                      }}
+                      title={bluePlayer.name}
+                    >
+                      {bluePlayer.avatar && (
+                        <span className="text-[10px] sm:text-xs leading-none shrink-0 drop-shadow-xs">
+                          {bluePlayer.avatar}
+                        </span>
+                      )}
+                      <span className="text-[9px] sm:text-[11px] font-black tracking-tight text-blue-700 uppercase truncate max-w-[65px] sm:max-w-[85px]">
+                        {bluePlayer.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* ================= 3D CENTER HOME TRIANGLE ================= */}
         <div className="absolute top-[40%] left-[40%] w-[20%] h-[20%] border-4 border-neutral-900 z-0 overflow-hidden shadow-2xl bg-neutral-950">
