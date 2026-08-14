@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion } from 'motion/react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
 import { auth, db } from './firebase/config';
@@ -694,6 +695,13 @@ export default function App() {
 
             {/* ================= MOBILE-OPTIMIZED SINGLE-VIEW LAYOUT (< lg) ================= */}
             <div className="flex lg:hidden flex-col items-center gap-3 w-full max-w-lg mx-auto">
+              {/* Mobile Voice Chat Toggle Panel */}
+              <VoicePanel
+                roomId={room.roomId}
+                myUid={user.uid}
+                language={language}
+              />
+
               {/* Mobile 4-Player Compact Horizontal Status Strip */}
               <div className="w-full grid grid-cols-4 gap-1.5 bg-neutral-950 border border-neutral-850 p-2 rounded-2xl shadow">
                 {game.playerOrder.map((uid) => {
@@ -712,11 +720,13 @@ export default function App() {
                   }[color] || 'border-neutral-700 bg-neutral-900 text-neutral-300';
 
                   return (
-                    <div
+                    <motion.div
                       key={uid}
-                      className={`relative flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all ${
+                      animate={isCurrent ? { scale: [1, 1.05, 1], y: [0, -2, 0] } : { scale: 1, y: 0 }}
+                      transition={isCurrent ? { repeat: Infinity, duration: 2, ease: 'easeInOut' } : { duration: 0.2 }}
+                      className={`relative flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all select-none ${
                         isCurrent
-                          ? 'border-amber-400 bg-amber-950/40 ring-2 ring-amber-400 shadow-md animate-pulse'
+                          ? 'border-amber-400 bg-amber-950/50 ring-2 ring-amber-400/80 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
                           : colorStyles
                       }`}
                     >
@@ -743,7 +753,7 @@ export default function App() {
                           ? `${game.snakePositions?.[uid] || 1}/100 🐍`
                           : `${tokensHome}/4 🏆`}
                       </span>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

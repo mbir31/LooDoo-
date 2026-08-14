@@ -249,15 +249,15 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
     if (r === 7 && c >= 9 && c <= 13) return 'home_path_yellow';
     if (c === 7 && r >= 9 && r <= 13) return 'home_path_blue';
 
-    if (r === 6 && c === 1) return 'start_red';
-    if (r === 1 && c === 8) return 'start_green';
-    if (r === 8 && c === 13) return 'start_yellow';
-    if (r === 13 && c === 6) return 'start_blue';
+    if (r === 8 && c === 1) return 'start_red';
+    if (r === 1 && c === 6) return 'start_green';
+    if (r === 6 && c === 13) return 'start_yellow';
+    if (r === 13 && c === 8) return 'start_blue';
 
-    if (r === 2 && c === 6) return 'star';
-    if (r === 6 && c === 12) return 'star';
-    if (r === 12 && c === 8) return 'star';
-    if (r === 8 && c === 2) return 'star';
+    if (r === 6 && c === 2) return 'star';
+    if (r === 2 && c === 8) return 'star';
+    if (r === 8 && c === 12) return 'star';
+    if (r === 12 && c === 6) return 'star';
 
     return 'track_normal';
   };

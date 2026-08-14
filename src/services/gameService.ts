@@ -341,18 +341,20 @@ export async function createRoom(
   notifyPlayersSubscribers(roomId, { [user.uid]: p1Player });
   broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: roomData, players: { [user.uid]: p1Player } });
 
-  // 2. Background Firestore write
+  // 2. Immediate Firestore sync with robust fallback
   const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
-  firestoreBackgroundSync(
-    Promise.all([
+  try {
+    await Promise.all([
       setDoc(roomRef, roomData),
       setDoc(playerRef, p1Player),
       updateDoc(doc(db, 'users', user.uid), {
         activeRoomId: roomId,
         lastSeenAt: Date.now(),
       }).catch(() => {}),
-    ])
-  );
+    ]);
+  } catch (err: any) {
+    console.warn('Firestore room creation sync notice:', err?.message || err);
+  }
 
   return { roomId, roomCode, roomData, p1Player };
 }
@@ -607,14 +609,16 @@ export async function joinRoom(
   notifyPlayersSubscribers(roomId, cached.players);
   broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
 
-  // Background Firestore write
-  firestoreBackgroundSync(
-    Promise.all([
+  // Immediate Firestore write
+  try {
+    await Promise.all([
       setDoc(doc(db, 'rooms', roomId, 'players', user.uid), newPlayer),
       updateDoc(doc(db, 'rooms', roomId), { updatedAt: Date.now() }).catch(() => {}),
       updateDoc(doc(db, 'users', user.uid), { activeRoomId: roomId, lastSeenAt: Date.now() }).catch(() => {}),
-    ])
-  );
+    ]);
+  } catch (err: any) {
+    console.warn('Firestore player join write notice:', err?.message || err);
+  }
 
   return { roomId, slot: availableSlot, roomData: currentRoom, player: newPlayer };
 }

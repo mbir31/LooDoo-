@@ -295,11 +295,15 @@ export const BoardToken: React.FC<BoardTokenProps> = ({
         left: isGliding ? animationState.lefts : currentLeft,
         top: isGliding ? animationState.tops : currentTop,
         x: offsetX,
-        y: offsetY,
+        y: isGliding
+          ? offsetY
+          : isMovable
+          ? [offsetY, offsetY - 5, offsetY]
+          : offsetY,
         scale: isGliding
           ? [1, 1.28, 1.18, 1.28, 1]
           : isMovable
-          ? [1, 1.25, 1]
+          ? [1, 1.22, 1]
           : 1,
         rotate: isGliding && animationState.isCaptureReturn ? [0, -180, -360] : 0,
       }}
@@ -314,8 +318,11 @@ export const BoardToken: React.FC<BoardTokenProps> = ({
           : {
               left: { type: 'spring', damping: 26, stiffness: 320 },
               top: { type: 'spring', damping: 26, stiffness: 320 },
+              y: isMovable
+                ? { repeat: Infinity, duration: 1.2, ease: 'easeInOut' }
+                : { duration: 0.2 },
               scale: isMovable
-                ? { repeat: Infinity, duration: 1.1, ease: 'easeInOut' }
+                ? { repeat: Infinity, duration: 1.2, ease: 'easeInOut' }
                 : { duration: 0.2 },
               layout: { type: 'spring', stiffness: 400, damping: 28 },
             }
@@ -324,18 +331,73 @@ export const BoardToken: React.FC<BoardTokenProps> = ({
       onMouseLeave={onHoverEnd}
       onClick={onClick}
     >
+      {/* Visual Highlight Effects when Token is Movable */}
+      {isMovable && (
+        <>
+          {/* Expanding Beacon Radar Pulse 1 */}
+          <motion.div
+            animate={{
+              scale: [0.9, 1.8, 2.4],
+              opacity: [0.9, 0.45, 0],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.3,
+              ease: 'easeOut',
+            }}
+            className="absolute inset-0 rounded-full border-2 border-amber-300 pointer-events-none z-10"
+            style={{
+              boxShadow: `0 0 16px ${COLOR_MAP[color]?.shadowColor || 'rgba(251,191,36,0.9)'}`,
+            }}
+          />
+
+          {/* Secondary Harmonic Wave Pulse 2 */}
+          <motion.div
+            animate={{
+              scale: [0.9, 1.6, 2.1],
+              opacity: [0.8, 0.35, 0],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.3,
+              delay: 0.65,
+              ease: 'easeOut',
+            }}
+            className="absolute inset-0 rounded-full border border-amber-400 pointer-events-none z-10"
+          />
+
+          {/* Floating Downward Beacon / Diamond Pointer */}
+          <motion.div
+            animate={{
+              y: [-2, -7, -2],
+              scale: [0.9, 1.15, 0.9],
+            }}
+            transition={{
+              repeat: Infinity,
+              duration: 1.1,
+              ease: 'easeInOut',
+            }}
+            className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 pointer-events-none flex flex-col items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+          >
+            <div className="w-2.5 h-2.5 bg-gradient-to-br from-yellow-200 to-amber-400 rotate-45 border border-amber-600 shadow-[0_0_8px_#f59e0b] rounded-[1.5px]" />
+          </motion.div>
+        </>
+      )}
+
       {/* 3D Realistic Pawn / Goti Token Body */}
       <div
         className={`relative w-[90%] h-[90%] rounded-full flex items-center justify-center transition-all ${
           isGliding
             ? 'shadow-[0_12px_24px_rgba(0,0,0,0.65)] scale-110'
             : isMovable
-            ? 'ring-4 ring-amber-300 ring-offset-2 ring-offset-black shadow-[0_0_22px_rgba(251,191,36,1)] cursor-pointer animate-pulse'
+            ? 'ring-3 sm:ring-4 ring-amber-300 ring-offset-2 ring-offset-black/90 shadow-[0_0_24px_rgba(251,191,36,1)] cursor-pointer'
             : ''
         }`}
         style={{
           filter: isGliding
             ? 'drop-shadow(0 14px 10px rgba(0, 0, 0, 0.6))'
+            : isMovable
+            ? 'drop-shadow(0 0 10px rgba(251, 191, 36, 0.9))'
             : 'drop-shadow(0 5px 5px rgba(0, 0, 0, 0.45))',
         }}
       >

@@ -92,15 +92,17 @@ export const translations = {
 
     // Voice Chat
     voiceChat: 'Live Voice',
-    enableVoice: 'Join Voice',
-    disableVoice: 'Leave Voice',
+    enableVoice: 'Turn ON Voice',
+    disableVoice: 'Turn OFF Voice',
+    turnOnVoice: 'Turn ON',
+    turnOffVoice: 'Turn OFF',
     muteMic: 'Mute Mic',
     unmuteMic: 'Unmute Mic',
     micDenied: 'Microphone access is required for voice chat.',
     speaking: 'Speaking',
     voiceConnected: 'Voice Connected',
     voiceDisconnected: 'Voice Disconnected',
-    voiceNote: 'Real-time WebRTC audio mesh',
+    voiceNote: 'Real-time WebRTC audio',
 
     // Quick Reactions
     reactions: 'Reactions',
@@ -280,15 +282,17 @@ export const translations = {
 
     // Voice Chat
     voiceChat: 'লাইভ ভয়েস চ্যাট',
-    enableVoice: 'ভয়েসে যোগ দিন',
+    enableVoice: 'ভয়েস চালু করুন',
     disableVoice: 'ভয়েস বন্ধ করুন',
+    turnOnVoice: 'ভয়েস চালু',
+    turnOffVoice: 'ভয়েস বন্ধ',
     muteMic: 'মাইক মিউট',
     unmuteMic: 'মাইক আনমিউট',
     micDenied: 'ভয়েস চ্যাট ব্যবহার করতে মাইক্রোফোনের অনুমতি প্রয়োজন।',
     speaking: 'কথা বলছেন',
     voiceConnected: 'ভয়েস সংযুক্ত',
     voiceDisconnected: 'ভয়েস সংযোগ বিচ্ছিন্ন',
-    voiceNote: 'রিয়েল-টাইম WebRTC ভয়েস সংযোগ',
+    voiceNote: 'রিয়েল-টাইম WebRTC ভয়েস',
 
     // Quick Reactions
     reactions: 'রিঅ্যাকশন',

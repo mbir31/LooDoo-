@@ -76,6 +76,9 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
 ## 🎮 Complete Feature Arsenal
 
 ### 🎲 Gameplay & Board Mechanics
+- **Accurate Quadrant Way Alignment**: Redesigned 15x15 board geometry with each player's colored start paths, star safe sanctuaries, and home columns properly connected to the right of their respective yards.
+- **Movable Token Visual Highlight Animation**: Active player's legal pieces feature dual-wave harmonic beacon pulses, hover diamonds, bouncing spring translations, and prominent high-contrast glowing auras.
+- **Dynamic Turn Indicator Transitions**: Spring-animated turn switches with color-themed auras, active player pulses, and real-time roll alerts.
 - **Bangladeshi 3-Six Rule (তিন ছক্কায় দান বাতিল)**: Authentic local rule engine that cancels the turn if a player rolls three 6s consecutively.
 - **Blockades & Double Token Stacking**: Strategic defense mechanics to protect tokens.
 - **Safe Cells (Star Zones)**: 8 traditional colored sanctuary cells where tokens cannot be captured.

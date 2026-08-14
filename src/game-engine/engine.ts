@@ -21,16 +21,17 @@ export const SLOT_START_TRACK_INDEX: Record<PlayerSlot, number> = {
 };
 
 // Safe squares on the 52-cell track:
-// 4 starting squares + 4 star squares (8 spaces ahead of each start)
+// 4 starting squares (0: Red [8,1], 13: Green [1,6], 26: Yellow [6,13], 39: Blue [13,8])
+// + 4 star squares (5: [6,2], 18: [2,8], 31: [8,12], 44: [12,6])
 export const SAFE_TRACK_INDICES = new Set<number>([
-  0,  // P1 Start
-  8,  // Star 1
-  13, // P2 Start
-  21, // Star 2
-  26, // P3 Start
-  34, // Star 3
-  39, // P4 Start
-  47, // Star 4
+  0,  // P1 Start (Red at [8, 1])
+  5,  // Star 1 (Left arm top lane [6, 2])
+  13, // P2 Start (Green at [1, 6])
+  18, // Star 2 (Top arm right lane [2, 8])
+  26, // P3 Start (Yellow at [6, 13])
+  31, // Star 3 (Right arm bottom lane [8, 12])
+  39, // P4 Start (Blue at [13, 8])
+  44, // Star 4 (Bottom arm left lane [12, 6])
 ]);
 
 export function isSafeTrackIndex(trackIndex: number): boolean {
@@ -389,60 +390,60 @@ export function getProjectedLandingInfo(
  */
 
 // 52 Common Track Cells Coordinates [row, col] on 15x15 grid
-// Clockwise starting from Red Start (row 6, col 1):
+// Clockwise starting from Red Start (row 8, col 1):
 export const TRACK_GRID_COORDINATES: [number, number][] = [
-  [6, 1],  // 0: P1 Start (Red) - SAFE
-  [6, 2],  // 1
-  [6, 3],  // 2
-  [6, 4],  // 3
-  [6, 5],  // 4
-  [5, 6],  // 5 (Turns Up)
-  [4, 6],  // 6
-  [3, 6],  // 7
-  [2, 6],  // 8: SAFE (Star 1)
-  [1, 6],  // 9
-  [0, 6],  // 10
-  [0, 7],  // 11 (Top Middle)
-  [0, 8],  // 12
-  [1, 8],  // 13: P2 Start (Green) - SAFE
-  [2, 8],  // 14
-  [3, 8],  // 15
-  [4, 8],  // 16
-  [5, 8],  // 17
-  [6, 9],  // 18 (Turns Right)
-  [6, 10], // 19
-  [6, 11], // 20
-  [6, 12], // 21: SAFE (Star 2)
-  [6, 13], // 22
-  [6, 14], // 23
-  [7, 14], // 24 (Right Middle)
-  [8, 14], // 25
-  [8, 13], // 26: P3 Start (Yellow) - SAFE
-  [8, 12], // 27
-  [8, 11], // 28
-  [8, 10], // 29
-  [8, 9],  // 30
-  [9, 8],  // 31 (Turns Down)
-  [10, 8], // 32
-  [11, 8], // 33
-  [12, 8], // 34: SAFE (Star 3)
-  [13, 8], // 35
-  [14, 8], // 36
-  [14, 7], // 37 (Bottom Middle)
-  [14, 6], // 38
-  [13, 6], // 39: P4 Start (Blue) - SAFE
-  [12, 6], // 40
-  [11, 6], // 41
-  [10, 6], // 42
-  [9, 6],  // 43
-  [8, 5],  // 44 (Turns Left)
-  [8, 4],  // 45
-  [8, 3],  // 46
-  [8, 2],  // 47: SAFE (Star 4)
-  [8, 1],  // 48
-  [8, 0],  // 49
-  [7, 0],  // 50 (Left Middle)
-  [6, 0],  // 51
+  [8, 1],  // 0: P1 Start (Red) - SAFE
+  [8, 0],  // 1
+  [7, 0],  // 2 (Left Middle)
+  [6, 0],  // 3
+  [6, 1],  // 4
+  [6, 2],  // 5: SAFE (Star 1)
+  [6, 3],  // 6
+  [6, 4],  // 7
+  [6, 5],  // 8
+  [5, 6],  // 9 (Turns Up into Top Arm)
+  [4, 6],  // 10
+  [3, 6],  // 11
+  [2, 6],  // 12
+  [1, 6],  // 13: P2 Start (Green) - SAFE
+  [0, 6],  // 14
+  [0, 7],  // 15 (Top Middle)
+  [0, 8],  // 16
+  [1, 8],  // 17
+  [2, 8],  // 18: SAFE (Star 2)
+  [3, 8],  // 19
+  [4, 8],  // 20
+  [5, 8],  // 21
+  [6, 9],  // 22 (Turns Right into Right Arm)
+  [6, 10], // 23
+  [6, 11], // 24
+  [6, 12], // 25
+  [6, 13], // 26: P3 Start (Yellow) - SAFE
+  [6, 14], // 27
+  [7, 14], // 28 (Right Middle)
+  [8, 14], // 29
+  [8, 13], // 30
+  [8, 12], // 31: SAFE (Star 3)
+  [8, 11], // 32
+  [8, 10], // 33
+  [8, 9],  // 34
+  [9, 8],  // 35 (Turns Down into Bottom Arm)
+  [10, 8], // 36
+  [11, 8], // 37
+  [12, 8], // 38
+  [13, 8], // 39: P4 Start (Blue) - SAFE
+  [14, 8], // 40
+  [14, 7], // 41 (Bottom Middle)
+  [14, 6], // 42
+  [13, 6], // 43
+  [12, 6], // 44: SAFE (Star 4)
+  [11, 6], // 45
+  [10, 6], // 46
+  [9, 6],  // 47
+  [8, 5],  // 48 (Turns Left into Left Arm)
+  [8, 4],  // 49
+  [8, 3],  // 50
+  [8, 2],  // 51
 ];
 
 // Home Path 5 cells for each slot (progress 51..55)
