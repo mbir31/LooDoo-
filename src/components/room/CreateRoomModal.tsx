@@ -118,6 +118,51 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 </div>
                 <p className="text-[10px] text-neutral-400 mt-1">{getTranslation(language, 'modeRushDesc')}</p>
               </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  soundFx.click();
+                  setGameMode('SNAKE_LADDER');
+                }}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  gameMode === 'SNAKE_LADDER'
+                    ? 'bg-emerald-950/40 border-emerald-400 text-white shadow-md'
+                    : 'bg-black border-neutral-800 text-neutral-400 hover:bg-neutral-900'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">🐍</span>
+                  <p className="font-black text-xs text-white">{getTranslation(language, 'snakeLadderMode')}</p>
+                </div>
+                <p className="text-[10px] text-neutral-400 mt-1">{getTranslation(language, 'snakeLadderModeDesc')}</p>
+              </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  soundFx.click();
+                  setGameMode('TEAM');
+                  setMaxPlayers(4);
+                }}
+                className={`p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                  gameMode === 'TEAM'
+                    ? 'bg-blue-950/40 border-blue-400 text-white shadow-md'
+                    : 'bg-black border-neutral-800 text-neutral-400 hover:bg-neutral-900'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-blue-400" />
+                  <p className="font-black text-xs text-white">
+                    {language === 'bn' ? '২ বনাম ২ টিম মোড' : '2v2 Team Mode'}
+                  </p>
+                </div>
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  {language === 'bn' ? 'লাল+হলুদ বনাম সবুজ+নীল দল' : 'Red+Yellow vs Green+Blue'}
+                </p>
+              </button>
             </div>
           </div>
 

@@ -287,6 +287,12 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       {/* 1-Tap PWA Install Banner */}
       <InstallPwaButton language={language} variant="banner" />
 
+      {/* Screen Bottom Credit Footer */}
+      <footer className="w-full py-4 text-center text-xs text-neutral-400 font-medium border-t border-neutral-900 mt-4 flex flex-col sm:flex-row items-center justify-center gap-1">
+        <span>Built with love, for FnF, by</span>
+        <span className="text-amber-400 font-bold tracking-wide">©munabbirMushran</span>
+      </footer>
+
       {/* Admin Settings Modal */}
 
       {showAdminModal && (

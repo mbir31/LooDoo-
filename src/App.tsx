@@ -46,6 +46,9 @@ import { HowToPlayModal } from './components/room/HowToPlayModal';
 import { RoomHistoryModal } from './components/room/RoomHistoryModal';
 import { EditProfileModal } from './components/room/EditProfileModal';
 import { InstallPwaButton } from './components/ui/InstallPwaButton';
+import { PassAndPlayGame } from './components/room/PassAndPlayGame';
+import { TrophyModal } from './components/room/TrophyModal';
+import { awardMatchStats } from './utils/progression';
 
 import {
   PlusCircle,
@@ -113,6 +116,8 @@ export default function App() {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showTrophyModal, setShowTrophyModal] = useState(false);
+  const [isPassAndPlayMode, setIsPassAndPlayMode] = useState(false);
   const [initialJoinCode, setInitialJoinCode] = useState('');
 
   const [authError, setAuthError] = useState<string | null>(null);
@@ -511,6 +516,17 @@ export default function App() {
     );
   }
 
+  // PASS & PLAY OFFLINE SCREEN
+  if (isPassAndPlayMode && user) {
+    return (
+      <PassAndPlayGame
+        language={language}
+        currentUser={user}
+        onExit={() => setIsPassAndPlayMode(false)}
+      />
+    );
+  }
+
   // Active game view vs Lobby vs Home Screen
   const isGameActive = room && game && (room.status === 'PLAYING' || room.status === 'FINISHED');
   const isLobbyActive = room && (!game || room.status === 'OPEN' || room.status === 'READY');
@@ -832,17 +848,32 @@ export default function App() {
                 </div>
               </div>
 
-              <button
-                id="home-edit-profile-btn"
-                onClick={() => {
-                  soundFx.click();
-                  setShowEditProfile(true);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-neutral-900 to-neutral-850 hover:from-neutral-850 hover:to-neutral-800 text-neutral-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-neutral-750 shrink-0 shadow-sm"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-amber-400" />
-                <span>{language === 'bn' ? 'নাম ও ইমোজি বদলান' : 'Edit Profile'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  id="home-trophy-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowTrophyModal(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+                  title="Level, XP & Trophies"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Lv.{user.stats?.level || 1}</span>
+                </button>
+
+                <button
+                  id="home-edit-profile-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowEditProfile(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-neutral-900 to-neutral-850 hover:from-neutral-850 hover:to-neutral-800 text-neutral-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all border border-neutral-750 shrink-0 shadow-sm"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">{language === 'bn' ? 'নাম ও ইমোজি' : 'Edit Profile'}</span>
+                </button>
+              </div>
             </div>
 
             {/* DEDICATED 1-TAP INSTALL PWA ON HOME SCREEN BUTTON */}
@@ -940,29 +971,49 @@ export default function App() {
               </div>
             </div>
 
-            {/* BOTTOM ACTIONS: PLAY ALONE (SMALLER GRADIENT BUTTON) & HOW TO PLAY */}
+            {/* BOTTOM ACTIONS: PLAY ALONE, PASS & PLAY OFFLINE, TROPHIES & HOW TO PLAY */}
             <div className="w-full flex flex-col items-center gap-3 pt-1">
-              {/* PLAY ALONE / একলা খেলো BUTTON */}
-              <button
-                id="home-play-alone-btn"
-                onClick={handlePlayAlone}
-                disabled={soloLoading}
-                className="py-2.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:brightness-115 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2 border border-pink-400/40 cursor-pointer transition-all"
-              >
-                {soloLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-pink-200" />
-                ) : (
-                  <Bot className="w-4 h-4 text-pink-200" />
-                )}
-                <span>
-                  {soloLoading
-                    ? (language === 'bn' ? 'শুরু হচ্ছে...' : 'Starting...')
-                    : (language === 'bn' ? 'একলা খেলো' : 'Play Alone')}
-                </span>
-                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-black/30 text-pink-100">
-                  vs AI
-                </span>
-              </button>
+              <div className="flex flex-wrap items-center justify-center gap-2.5 w-full">
+                {/* PASS & PLAY (OFFLINE 4-PLAYER ON 1 PHONE) */}
+                <button
+                  id="home-pass-and-play-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setIsPassAndPlayMode(true);
+                  }}
+                  className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 hover:brightness-115 active:scale-95 text-neutral-950 font-black text-xs sm:text-sm shadow-lg shadow-orange-500/25 flex items-center justify-center gap-2 border border-amber-300/40 cursor-pointer transition-all"
+                >
+                  <Sparkles className="w-4 h-4 text-neutral-950" />
+                  <span>
+                    {language === 'bn' ? 'এক ফোনে ৪ জন (Pass & Play)' : 'Offline Pass & Play'}
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-black/20 text-neutral-950">
+                    Offline
+                  </span>
+                </button>
+
+                {/* PLAY ALONE / একলা খেলো BUTTON */}
+                <button
+                  id="home-play-alone-btn"
+                  onClick={handlePlayAlone}
+                  disabled={soloLoading}
+                  className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-500 hover:brightness-115 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-lg shadow-pink-500/25 flex items-center justify-center gap-2 border border-pink-400/40 cursor-pointer transition-all"
+                >
+                  {soloLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-pink-200" />
+                  ) : (
+                    <Bot className="w-4 h-4 text-pink-200" />
+                  )}
+                  <span>
+                    {soloLoading
+                      ? (language === 'bn' ? 'শুরু হচ্ছে...' : 'Starting...')
+                      : (language === 'bn' ? 'একলা খেলো' : 'Play Alone')}
+                  </span>
+                  <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full bg-black/30 text-pink-100">
+                    vs AI
+                  </span>
+                </button>
+              </div>
 
               {soloError && (
                 <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1.5 rounded-lg text-center">
@@ -970,24 +1021,52 @@ export default function App() {
                 </div>
               )}
 
-              {/* How to Play rulebook link */}
-              <button
-                id="home-how-to-play-btn"
-                onClick={() => {
-                  soundFx.click();
-                  setShowHowToPlay(true);
-                }}
-                className="py-1.5 px-3.5 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-              >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                <span>{getTranslation(language, 'howToPlay')}</span>
-              </button>
+              {/* Secondary Utilities: Trophies, Badges & How to Play */}
+              <div className="flex items-center gap-2">
+                <button
+                  id="home-trophies-bottom-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowTrophyModal(true);
+                  }}
+                  className="py-1.5 px-3 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{language === 'bn' ? 'অর্জন ও ট্রফি' : 'Trophies & Badges'}</span>
+                </button>
+
+                <button
+                  id="home-how-to-play-btn"
+                  onClick={() => {
+                    soundFx.click();
+                    setShowHowToPlay(true);
+                  }}
+                  className="py-1.5 px-3 rounded-xl bg-neutral-950 hover:bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200 text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{getTranslation(language, 'howToPlay')}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
       </main>
 
+      {/* Page Footer & Bottom Screen Credit */}
+      <footer className="w-full py-4 text-center text-xs text-neutral-400 font-medium border-t border-neutral-900/80 mt-auto bg-neutral-950/80 backdrop-blur shrink-0 flex flex-col sm:flex-row items-center justify-center gap-1.5 z-10 px-4">
+        <span>Built with love, for FnF, by</span>
+        <span className="text-amber-400 font-bold tracking-wide">©munabbirMushran</span>
+      </footer>
+
       {/* MODALS */}
+      {/* Trophy & Progression Modal */}
+      {showTrophyModal && user && (
+        <TrophyModal
+          user={user}
+          language={language}
+          onClose={() => setShowTrophyModal(false)}
+        />
+      )}
       {/* Create Room Modal */}
       {showCreateModal && user && (
         <CreateRoomModal

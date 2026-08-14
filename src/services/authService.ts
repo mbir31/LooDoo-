@@ -176,11 +176,11 @@ export async function logoutUser(): Promise<void> {
 }
 
 /**
- * Update user display name and avatar
+ * Update user display name, avatar, preferences, and stats
  */
 export async function updateUserProfile(
   uid: string,
-  updates: Partial<Pick<UserProfile, 'displayName' | 'avatar' | 'preferredLanguage' | 'activeRoomId' | 'tokenSkin' | 'tokenTheme'>>
+  updates: Partial<UserProfile>
 ): Promise<void> {
   try {
     const local = getLocalGuestProfile();

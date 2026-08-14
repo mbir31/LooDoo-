@@ -63,6 +63,13 @@ export interface MoveCalculation {
   grantsExtraTurn: boolean;
 }
 
+export function areTeammates(slotA: PlayerSlot, slotB: PlayerSlot): boolean {
+  if (slotA === slotB) return true;
+  const isTeam1A = slotA === 'P1' || slotA === 'P3';
+  const isTeam1B = slotB === 'P1' || slotB === 'P3';
+  return isTeam1A === isTeam1B;
+}
+
 /**
  * Checks whether a token can legally move given a dice roll
  */
@@ -152,6 +159,11 @@ export function calculateTokenMove(
         const otherSlot = slotMap[otherUid];
         if (!otherSlot) continue;
 
+        // In TEAM mode, teammates do not blockade each other
+        if (settings.gameMode === 'TEAM' && areTeammates(slot, otherSlot)) {
+          continue;
+        }
+
         let tokensOnCell = 0;
         for (const t of Object.values(playerTokens)) {
           if (t.zone === 'TRACK' && getGlobalTrackIndex(otherSlot, t.progress) === targetGlobalIdx) {
@@ -185,6 +197,11 @@ export function calculateTokenMove(
         if (otherUid === uid) continue;
         const otherSlot = slotMap[otherUid];
         if (!otherSlot) continue;
+
+        // In TEAM mode, teammates cannot be captured
+        if (settings.gameMode === 'TEAM' && areTeammates(slot, otherSlot)) {
+          continue;
+        }
 
         for (const t of Object.values(playerTokens)) {
           if (t.zone === 'TRACK' && getGlobalTrackIndex(otherSlot, t.progress) === targetGlobalIdx) {

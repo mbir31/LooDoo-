@@ -4,9 +4,11 @@ export type PlayerColor = 'red' | 'green' | 'yellow' | 'blue';
 
 export type PlayerSlot = 'P1' | 'P2' | 'P3' | 'P4';
 
-export type GameMode = 'CLASSIC' | 'RUSH' | 'SNAKE_LADDER' | 'PASS_AND_PLAY';
+export type GameMode = 'CLASSIC' | 'RUSH' | 'SNAKE_LADDER' | 'PASS_AND_PLAY' | 'TEAM';
 
-export type TokenTheme = 'classic' | 'wood' | 'marble' | 'brass' | 'neon';
+export type TeamId = 'TEAM_1' | 'TEAM_2';
+
+export type TokenTheme = 'classic' | 'wood' | 'marble' | 'brass' | 'neon' | 'terracotta';
 
 export type RoomStatus = 'OPEN' | 'READY' | 'PLAYING' | 'FINISHED' | 'IDLE' | 'ARCHIVED';
 
@@ -38,6 +40,11 @@ export interface UserStats {
   matchesPlayed: number;
   sixesRolled: number;
   capturesMade: number;
+  winStreak?: number;
+  longestStreak?: number;
+  xp?: number;
+  level?: number;
+  trophies?: string[];
 }
 
 export interface UserProfile {
@@ -67,6 +74,7 @@ export interface RoomPlayer {
   customColorHex?: string;
   avatar: string;
   tokenTheme?: TokenTheme;
+  teamId?: TeamId;
   ready: boolean;
   connected: boolean;
   status: 'active' | 'disconnected' | 'left';
@@ -113,6 +121,8 @@ export interface PlayerTokens {
 export interface GameDocument {
   gameId: string;
   roomId: string;
+  gameMode?: GameMode;
+  winningTeam?: TeamId | null;
   status: GameStatus;
   playerOrder: string[]; // array of uids in turn order
   currentPlayerUid: string;

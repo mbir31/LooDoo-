@@ -365,52 +365,65 @@ export const soundFx = {
     } catch (e) {}
   },
 
-  // Speech & Bangla Audio Taunt Synthesizer
+  // Speech & Bangla Audio Taunt Synthesizer with Dramatic Audio FX & Web Speech
   playTaunt: (tauntId: string = 'six_maro', textBn?: string, textEn?: string) => {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    // First, play a humorous synth musical flourish for the taunt
+    // 1. Play signature sound effect & melodic jingle matching the clip intent
     try {
-      const tauntTunes: Record<string, number[]> = {
-        six_maro: [587, 880, 1174],
-        dhora_khaili: [800, 600, 300, 200],
-        khela_jombe: [440, 554, 659, 880],
-        ore_bhai: [523, 659, 523, 783],
-        kop_samlao: [900, 700, 1000],
-        mar_dili: [659, 783, 987, 1318],
-        ami_jitbo: [523, 659, 783, 1046],
-        dekhe_khel: [440, 440, 350],
+      const tauntTunes: Record<string, { freqs: number[]; type?: OscillatorType; decay?: number }> = {
+        six_maro: { freqs: [587, 880, 1174, 1396], type: 'triangle', decay: 0.18 },
+        chokka_maro: { freqs: [587, 880, 1174, 1396], type: 'triangle', decay: 0.18 },
+        ghuti_katar_ostad: { freqs: [880, 440, 987, 330], type: 'sawtooth', decay: 0.2 },
+        palabi_kothay: { freqs: [784, 659, 587, 523], type: 'sine', decay: 0.15 },
+        shabdhane_chalis: { freqs: [440, 493, 523, 440], type: 'sine', decay: 0.16 },
+        ki_chal_dilen: { freqs: [440, 554, 659, 988], type: 'triangle', decay: 0.22 },
+        ludu_raja: { freqs: [523, 659, 783, 1046, 1318], type: 'triangle', decay: 0.25 },
+        match_jome_geche: { freqs: [659, 880, 1174, 1318], type: 'sine', decay: 0.2 },
+        dhora_khaili: { freqs: [900, 700, 400, 200], type: 'sawtooth', decay: 0.22 },
+        kop_samlao: { freqs: [1000, 800, 1200, 600], type: 'sawtooth', decay: 0.18 },
+        taratari_chalao: { freqs: [523, 587, 659, 698, 784], type: 'sine', decay: 0.12 },
+        chokka_chara_goti_nai: { freqs: [587, 783, 880, 1174], type: 'triangle', decay: 0.2 },
+        party_hobe: { freqs: [523, 659, 783, 1046, 1318, 1567], type: 'triangle', decay: 0.25 },
+        eta_ki_holo: { freqs: [784, 587, 880, 440], type: 'sawtooth', decay: 0.2 },
+        ami_jitbo: { freqs: [523, 659, 783, 1046], type: 'triangle', decay: 0.2 },
       };
 
-      const tune = tauntTunes[tauntId] || [440, 660, 880];
-      tune.forEach((freq, idx) => {
+      const soundConfig = tauntTunes[tauntId] || { freqs: [440, 660, 880], type: 'triangle', decay: 0.16 };
+      soundConfig.freqs.forEach((freq, idx) => {
         const time = ctx.currentTime + idx * 0.07;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'triangle';
+        osc.type = soundConfig.type || 'triangle';
         osc.frequency.setValueAtTime(freq, time);
-        gain.gain.setValueAtTime(0.25, time);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.14);
+        gain.gain.setValueAtTime(0.24, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + (soundConfig.decay || 0.16));
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(time);
-        osc.stop(time + 0.14);
+        osc.stop(time + (soundConfig.decay || 0.16));
       });
     } catch (e) {}
 
-    // Then, trigger SpeechSynthesis if supported
+    // 2. Trigger high-clarity Web Speech Synthesis with Bengali/South Asian voice selection
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(textBn || textEn);
-        utterance.rate = 1.05;
-        utterance.pitch = 1.15;
-        utterance.volume = 0.9;
-        
-        // Try to pick Bengali or Hindi voice if available
+        const utteranceText = textBn || textEn || 'ছক্কা মার রে ভাই!';
+        const utterance = new SpeechSynthesisUtterance(utteranceText);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.2;
+        utterance.volume = 1.0;
+
         const voices = window.speechSynthesis.getVoices();
-        const bnVoice = voices.find((v) => v.lang.includes('bn') || v.lang.includes('hi'));
+        const bnVoice = voices.find(
+          (v) =>
+            v.lang.toLowerCase().includes('bn') ||
+            v.lang.toLowerCase().includes('hi') ||
+            v.name.toLowerCase().includes('bengali') ||
+            v.name.toLowerCase().includes('bangla')
+        );
         if (bnVoice) {
           utterance.voice = bnVoice;
         }
