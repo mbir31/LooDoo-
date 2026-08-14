@@ -8,7 +8,7 @@ import { X, PlusCircle, Users, Clock, Loader2, Sparkles, Shield, Zap } from 'luc
 interface CreateRoomModalProps {
   user: UserProfile;
   language: Language;
-  onRoomCreated: (roomId: string, roomCode: string, gameMode?: GameMode) => void;
+  onRoomCreated: (roomId: string, roomCode: string, gameMode?: GameMode, roomData?: any, p1Player?: any) => void;
   onClose: () => void;
 }
 
@@ -42,7 +42,7 @@ export const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
       };
 
       const result = await createRoom(user, maxPlayers, customSettings);
-      onRoomCreated(result.roomId, result.roomCode, gameMode);
+      onRoomCreated(result.roomId, result.roomCode, gameMode, result.roomData, result.p1Player);
     } catch (err: any) {
       setError(err.message || 'Failed to create room');
       setLoading(false);

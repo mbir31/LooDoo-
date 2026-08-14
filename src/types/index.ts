@@ -161,6 +161,13 @@ export interface GameDocument {
     bn: string;
     type: 'info' | 'penalty' | 'capture' | 'six' | 'home' | 'win';
   } | null;
+  snakePositions?: Record<string, number>;
+  snakeLastEvent?: {
+    type: 'LADDER' | 'SNAKE' | 'NORMAL';
+    from: number;
+    to: number;
+    uid: string;
+  } | null;
 }
 
 export type GameEventType =

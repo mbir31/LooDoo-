@@ -3,7 +3,6 @@ import { UserProfile, Language } from '../../types';
 import { getTranslation } from '../../i18n/translations';
 import { soundFx, isSoundEnabled, setSoundEnabled, folkMusicEngine } from '../../utils/sound';
 import { Volume2, VolumeX, Globe, User, LogIn, Sparkles, BookOpen, Music } from 'lucide-react';
-import { InstallPwaButton } from './InstallPwaButton';
 
 interface HeaderProps {
   user: UserProfile | null;
@@ -63,9 +62,6 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Dedicated 1-Tap PWA Install Button */}
-        <InstallPwaButton language={language} variant="compact" />
-
         {/* Procedural Bangla Folk Music Engine Toggle */}
         <button
           id="folk-music-toggle-btn"

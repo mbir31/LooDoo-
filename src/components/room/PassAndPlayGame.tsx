@@ -728,13 +728,13 @@ export const PassAndPlayGame: React.FC<PassAndPlayGameProps> = ({
           {/* Interactive 3D Dice Component & Quick Soundboard Action */}
           <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-2xl shadow-xl flex flex-col items-center gap-3">
             <DiceComponent
-              value={diceValue}
+              diceValue={diceValue}
               isRolling={isRolling}
-              isMyTurn={true}
-              disabled={diceRolled || Boolean(winnerUid)}
-              onRoll={handleRollDice}
+              canRoll={!diceRolled && !winnerUid && !isRolling}
               consecutiveSixes={consecutiveSixes}
+              playerColor={currentPlayer.color}
               language={language}
+              onRoll={handleRollDice}
             />
 
             <div className="w-full flex items-center justify-between gap-2 pt-2 border-t border-neutral-850">

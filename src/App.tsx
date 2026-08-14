@@ -25,6 +25,9 @@ import {
   joinRoom as serviceJoinRoom,
   createSoloRoom,
   handleTurnTimeout,
+  subscribeToRoom,
+  subscribeToPlayers,
+  subscribeToGame,
 } from './services/gameService';
 import { getLegalMoves, hasPlayerWon, countTokensHome } from './game-engine/engine';
 import { getTranslation } from './i18n/translations';
@@ -33,6 +36,7 @@ import { soundFx } from './utils/sound';
 // UI Components
 import { Header } from './components/ui/Header';
 import { LudoBoard } from './components/board/LudoBoard';
+import { SnakeLadderBoard } from './components/board/SnakeLadderBoard';
 import { DiceComponent } from './components/game/DiceComponent';
 import { TurnIndicator } from './components/game/TurnIndicator';
 import { PlayerCard } from './components/game/PlayerCard';
@@ -163,33 +167,30 @@ export default function App() {
       return;
     }
 
-    const roomRef = doc(db, 'rooms', currentRoomId);
-    const unsubRoom = onSnapshot(roomRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setRoom(snapshot.data() as RoomDocument);
-      } else {
-        // Room not found or deleted
-        setCurrentRoomId(null);
+    const unsubRoom = subscribeToRoom(currentRoomId, (roomData) => {
+      if (roomData) {
+        setRoom(roomData);
       }
     });
 
-    const playersRef = collection(db, 'rooms', currentRoomId, 'players');
-    const unsubPlayers = onSnapshot(playersRef, (snapshot) => {
-      const pMap: Record<string, RoomPlayer> = {};
-      snapshot.docs.forEach((d) => {
-        pMap[d.id] = d.data() as RoomPlayer;
-      });
-      setPlayers(pMap);
+    const unsubPlayers = subscribeToPlayers(currentRoomId, (playersData) => {
+      if (playersData && Object.keys(playersData).length > 0) {
+        setPlayers(playersData);
+      }
     });
 
     const voiceSessionsRef = collection(db, 'rooms', currentRoomId, 'voiceSessions');
-    const unsubVoice = onSnapshot(voiceSessionsRef, (snapshot) => {
-      const vMap: Record<string, { enabled: boolean; isSpeaking: boolean }> = {};
-      snapshot.docs.forEach((d) => {
-        vMap[d.id] = d.data() as any;
-      });
-      setVoiceSessions(vMap);
-    });
+    const unsubVoice = onSnapshot(
+      voiceSessionsRef,
+      (snapshot) => {
+        const vMap: Record<string, { enabled: boolean; isSpeaking: boolean }> = {};
+        snapshot.docs.forEach((d) => {
+          vMap[d.id] = d.data() as any;
+        });
+        setVoiceSessions(vMap);
+      },
+      () => {}
+    );
 
     return () => {
       unsubRoom();
@@ -219,10 +220,8 @@ export default function App() {
       return;
     }
 
-    const gameRef = doc(db, 'rooms', currentRoomId, 'games', room.currentGameId);
-    const unsubGame = onSnapshot(gameRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const gameData = snapshot.data() as GameDocument;
+    const unsubGame = subscribeToGame(currentRoomId, room.currentGameId, (gameData) => {
+      if (gameData) {
         setGame(gameData);
       }
     });
@@ -263,7 +262,7 @@ export default function App() {
     );
   }, [game, user, slotMap, room]);
 
-  // Automated System Bot Logic (Runs seamlessly when playing alone or when a bot's turn arrives)
+  // Automated System Bot Logic - Fast & Snappy (< 350ms)
   useEffect(() => {
     if (!game || !room || !user) return;
     if (room.status !== 'PLAYING' || game.winnerUid) return;
@@ -277,7 +276,7 @@ export default function App() {
 
     let timer: NodeJS.Timeout;
 
-    // Phase 1: Automated bot rolls the dice
+    // Phase 1: Automated bot rolls the dice (Fast 300ms)
     if (
       (game.status === 'AWAITING_ROLL' || game.status === 'EXTRA_ROLL') &&
       !game.diceRolled
@@ -292,14 +291,17 @@ export default function App() {
           } as UserProfile;
 
           soundFx.diceRoll();
-          await serviceRollDice(room.roomId, game.gameId, botProfile, game.version);
+          const res = await serviceRollDice(room.roomId, game.gameId, botProfile, game.version);
+          if (res?.updatedGame) {
+            setGame(res.updatedGame);
+          }
         } catch (err: any) {
           console.warn('Automated bot roll notice:', err?.message || err);
         }
-      }, 900);
+      }, 300);
     }
 
-    // Phase 2: Automated bot chooses best token and moves
+    // Phase 2: Automated bot chooses best token and moves (Fast 250ms)
     else if (
       game.status === 'AWAITING_TOKEN_SELECTION' &&
       game.diceRolled &&
@@ -352,17 +354,20 @@ export default function App() {
             displayName: botPlayer?.displayName || 'Robot 🤖',
           } as UserProfile;
 
-          await serviceMoveToken(
+          const res = await serviceMoveToken(
             room.roomId,
             game.gameId,
             botProfile,
             bestTokenId,
             game.version
           );
+          if (res?.updatedGame) {
+            setGame(res.updatedGame);
+          }
         } catch (err: any) {
           console.warn('Automated bot move notice:', err?.message || err);
         }
-      }, 750);
+      }, 250);
     }
 
     return () => clearTimeout(timer);
@@ -390,12 +395,34 @@ export default function App() {
     setSoloLoading(true);
     setSoloError(null);
     try {
-      // Start instant match with automated system
+      // Start instant match with automated system in 0ms
       const result = await createSoloRoom(user, 1);
+      setRoom(result.roomData);
+      setPlayers(result.playersMap);
+      setGame(result.gameData);
       setCurrentRoomId(result.roomId);
     } catch (err: any) {
       console.error('Play alone failed:', err);
       setSoloError(err.message || 'Could not start solo game');
+    } finally {
+      setSoloLoading(false);
+    }
+  };
+
+  const handlePlaySnakeLadderAlone = async () => {
+    if (!user) return;
+    soundFx.click();
+    setSoloLoading(true);
+    setSoloError(null);
+    try {
+      const result = await createSoloRoom(user, 1, { gameMode: 'SNAKE_LADDER' });
+      setRoom(result.roomData);
+      setPlayers(result.playersMap);
+      setGame(result.gameData);
+      setCurrentRoomId(result.roomId);
+    } catch (err: any) {
+      console.error('Play Snake & Ladder alone failed:', err);
+      setSoloError(err.message || 'Could not start Snake & Ladder game');
     } finally {
       setSoloLoading(false);
     }
@@ -433,6 +460,10 @@ export default function App() {
 
     try {
       const result = await serviceJoinRoom(code, user);
+      if (result.roomData) setRoom(result.roomData);
+      if (result.player) {
+        setPlayers((prev) => ({ ...prev, [user.uid]: result.player! }));
+      }
       setCurrentRoomId(result.roomId);
       setQuickRoomCode('');
     } catch (err: any) {
@@ -461,7 +492,10 @@ export default function App() {
       }
       setIsRolling(true);
       setActionError(null);
-      await serviceRollDice(currentRoomId, game.gameId, user, game.version);
+      const res = await serviceRollDice(currentRoomId, game.gameId, user, game.version);
+      if (res?.updatedGame) {
+        setGame(res.updatedGame);
+      }
     } catch (err: any) {
       setActionError(err.message || 'Failed to roll dice');
     } finally {
@@ -482,7 +516,10 @@ export default function App() {
         } catch {}
       }
       setActionError(null);
-      await serviceMoveToken(currentRoomId, game.gameId, user, tokenId, game.version);
+      const res = await serviceMoveToken(currentRoomId, game.gameId, user, tokenId, game.version);
+      if (res?.updatedGame) {
+        setGame(res.updatedGame);
+      }
     } catch (err: any) {
       setActionError(err.message || 'Failed to move token');
     }
@@ -607,16 +644,28 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Center Column: 15x15 Ludo Board */}
+              {/* Center Column: 15x15 Ludo Board or Snake & Ladder Board */}
               <div className="flex flex-col items-center gap-3 w-full max-w-[540px]">
-                <LudoBoard
-                  game={game}
-                  players={mergedPlayers}
-                  currentPlayerUid={game.currentPlayerUid}
-                  myUid={user.uid}
-                  legalMoves={legalMoves}
-                  onTokenClick={handleTokenClick}
-                />
+                {room.settings.gameMode === 'SNAKE_LADDER' || game.gameMode === 'SNAKE_LADDER' ? (
+                  <SnakeLadderBoard
+                    playerPositions={game.snakePositions || {}}
+                    players={mergedPlayers}
+                    playerOrder={game.playerOrder}
+                    currentPlayerUid={game.currentPlayerUid}
+                    myUid={user.uid}
+                    language={language}
+                    lastEvent={game.snakeLastEvent}
+                  />
+                ) : (
+                  <LudoBoard
+                    game={game}
+                    players={mergedPlayers}
+                    currentPlayerUid={game.currentPlayerUid}
+                    myUid={user.uid}
+                    legalMoves={legalMoves}
+                    onTokenClick={handleTokenClick}
+                  />
+                )}
 
                 {actionError && (
                   <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1.5 rounded-lg text-center">
@@ -688,9 +737,11 @@ export default function App() {
                         {isMe ? 'You' : p.displayName}
                       </span>
 
-                      {/* Home Tokens Badge */}
+                      {/* Home Tokens / Snake Position Badge */}
                       <span className="text-[9px] font-mono font-bold text-neutral-300 mt-0.5">
-                        {tokensHome}/4 🏆
+                        {room.settings.gameMode === 'SNAKE_LADDER' || game.gameMode === 'SNAKE_LADDER'
+                          ? `${game.snakePositions?.[uid] || 1}/100 🐍`
+                          : `${tokensHome}/4 🏆`}
                       </span>
                     </div>
                   );
@@ -717,14 +768,26 @@ export default function App() {
 
               {/* Mobile Centered Board */}
               <div className="w-full flex flex-col items-center">
-                <LudoBoard
-                  game={game}
-                  players={mergedPlayers}
-                  currentPlayerUid={game.currentPlayerUid}
-                  myUid={user.uid}
-                  legalMoves={legalMoves}
-                  onTokenClick={handleTokenClick}
-                />
+                {room.settings.gameMode === 'SNAKE_LADDER' || game.gameMode === 'SNAKE_LADDER' ? (
+                  <SnakeLadderBoard
+                    playerPositions={game.snakePositions || {}}
+                    players={mergedPlayers}
+                    playerOrder={game.playerOrder}
+                    currentPlayerUid={game.currentPlayerUid}
+                    myUid={user.uid}
+                    language={language}
+                    lastEvent={game.snakeLastEvent}
+                  />
+                ) : (
+                  <LudoBoard
+                    game={game}
+                    players={mergedPlayers}
+                    currentPlayerUid={game.currentPlayerUid}
+                    myUid={user.uid}
+                    legalMoves={legalMoves}
+                    onTokenClick={handleTokenClick}
+                  />
+                )}
 
                 {actionError && (
                   <div className="text-xs text-red-400 bg-red-950/60 border border-red-800 px-3 py-1 rounded-lg text-center mt-1">
@@ -1013,6 +1076,22 @@ export default function App() {
                     vs AI
                   </span>
                 </button>
+
+                {/* SNAKE & LADDER QUICK PLAY BUTTON */}
+                <button
+                  id="home-snake-ladder-btn"
+                  onClick={handlePlaySnakeLadderAlone}
+                  disabled={soloLoading}
+                  className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-green-500 hover:brightness-115 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 border border-emerald-400/40 cursor-pointer transition-all"
+                >
+                  <span className="text-base">🐍</span>
+                  <span>
+                    {language === 'bn' ? 'সাপ-লুডু খেলুন' : 'Snake & Ladders'}
+                  </span>
+                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-black/30 text-emerald-200">
+                    Mode
+                  </span>
+                </button>
               </div>
 
               {soloError && (
@@ -1072,9 +1151,11 @@ export default function App() {
         <CreateRoomModal
           user={user}
           language={language}
-          onRoomCreated={(roomId) => {
-            setShowCreateModal(false);
+          onRoomCreated={(roomId, _roomCode, _gameMode, roomData, p1Player) => {
+            if (roomData) setRoom(roomData);
+            if (p1Player) setPlayers({ [p1Player.uid]: p1Player });
             setCurrentRoomId(roomId);
+            setShowCreateModal(false);
           }}
           onClose={() => setShowCreateModal(false)}
         />

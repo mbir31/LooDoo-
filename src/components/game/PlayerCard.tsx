@@ -100,12 +100,14 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             )}
           </div>
 
-          {/* Tokens Home count or Connection status */}
+          {/* Tokens Home count / Snake Position or Connection status */}
           <div className="flex items-center justify-between text-[11px] text-neutral-400 mt-0.5">
             <div className="flex items-center gap-1">
               <Trophy className="w-3 h-3 text-amber-400" />
               <span className="font-semibold text-neutral-300">
-                {tokensHome}/4
+                {game?.gameMode === 'SNAKE_LADDER' || game?.snakePositions
+                  ? `${game?.snakePositions?.[player.uid] || 1}/100`
+                  : `${tokensHome}/4`}
               </span>
             </div>
 

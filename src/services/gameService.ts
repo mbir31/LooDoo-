@@ -5,14 +5,10 @@ import {
   getDocs,
   setDoc,
   updateDoc,
-  deleteDoc,
   query,
   where,
-  orderBy,
   limit,
   onSnapshot,
-  runTransaction,
-  serverTimestamp,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -37,6 +33,7 @@ import {
   getNextPlayerUid,
   countTokensHome,
 } from '../game-engine/engine';
+import { SNAKES_MAP, LADDERS_MAP } from '../components/board/SnakeLadderBoard';
 
 // Helper to generate cryptographically secure dice value 1..6
 export function generateSecureDice(): number {
@@ -69,13 +66,232 @@ const SLOT_COLORS: Record<PlayerSlot, PlayerColor> = {
 const ALL_SLOTS: PlayerSlot[] = ['P1', 'P2', 'P3', 'P4'];
 
 /**
- * Creates a persistent Room in Firestore
+ * High-speed Zero-Latency Memory & Cross-Tab Realtime Synchronization Engine
+ */
+interface LocalRoomCache {
+  room: RoomDocument;
+  players: Record<string, RoomPlayer>;
+  game: GameDocument | null;
+  events: GameEvent[];
+}
+
+export const localStore = new Map<string, LocalRoomCache>();
+
+// Listener subscribers
+const roomListeners = new Map<string, Set<(room: RoomDocument | null) => void>>();
+const playersListeners = new Map<string, Set<(players: Record<string, RoomPlayer>) => void>>();
+const gameListeners = new Map<string, Set<(game: GameDocument | null) => void>>();
+
+function notifyRoomSubscribers(roomId: string, room: RoomDocument | null) {
+  roomListeners.get(roomId)?.forEach((cb) => {
+    try {
+      cb(room);
+    } catch (_) {}
+  });
+}
+
+function notifyPlayersSubscribers(roomId: string, players: Record<string, RoomPlayer>) {
+  playersListeners.get(roomId)?.forEach((cb) => {
+    try {
+      cb(players);
+    } catch (_) {}
+  });
+}
+
+function notifyGameSubscribers(roomId: string, game: GameDocument | null) {
+  gameListeners.get(roomId)?.forEach((cb) => {
+    try {
+      cb(game);
+    } catch (_) {}
+  });
+}
+
+// Cross-tab broadcast channel for instant multi-tab synchronization
+let crossTabChannel: BroadcastChannel | null = null;
+try {
+  if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    crossTabChannel = new BroadcastChannel('loodoo_sync_channel');
+    crossTabChannel.onmessage = (event) => {
+      const { type, roomId, data } = event.data || {};
+      if (!roomId) return;
+      let cached = localStore.get(roomId);
+      if (!cached && data?.room) {
+        cached = {
+          room: data.room,
+          players: data.players || {},
+          game: data.game || null,
+          events: [],
+        };
+        localStore.set(roomId, cached);
+      }
+      if (cached) {
+        if (type === 'ROOM_UPDATED' && data?.room) {
+          cached.room = data.room;
+          notifyRoomSubscribers(roomId, cached.room);
+        }
+        if (type === 'PLAYERS_UPDATED' && data?.players) {
+          cached.players = data.players;
+          notifyPlayersSubscribers(roomId, cached.players);
+        }
+        if (type === 'GAME_UPDATED' && data?.game) {
+          cached.game = data.game;
+          notifyGameSubscribers(roomId, cached.game);
+        }
+      }
+    };
+  }
+} catch (_) {}
+
+function broadcastLocalUpdate(type: string, roomId: string, data: any) {
+  try {
+    crossTabChannel?.postMessage({ type, roomId, data });
+  } catch (_) {}
+}
+
+/**
+ * Non-blocking background Firestore write wrapper
+ */
+function firestoreBackgroundSync(promise: Promise<any>): void {
+  promise.catch((err) => {
+    // Non-blocking sync notice
+    console.debug('Firestore sync notice:', err?.message || err);
+  });
+}
+
+/**
+ * Subscriptions with Hybrid Local-First & Firestore Realtime Sync
+ */
+export function subscribeToRoom(
+  roomId: string,
+  callback: (room: RoomDocument | null) => void
+): Unsubscribe {
+  if (!roomListeners.has(roomId)) {
+    roomListeners.set(roomId, new Set());
+  }
+  roomListeners.get(roomId)!.add(callback);
+
+  // Send cached value instantly (0ms)
+  const cached = localStore.get(roomId);
+  if (cached?.room) {
+    callback(cached.room);
+  }
+
+  // Hook Firestore snapshot
+  const roomRef = doc(db, 'rooms', roomId);
+  const unsubFirestore = onSnapshot(
+    roomRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as RoomDocument;
+        let c = localStore.get(roomId);
+        if (!c) {
+          c = { room: data, players: {}, game: null, events: [] };
+          localStore.set(roomId, c);
+        }
+        c.room = data;
+        callback(data);
+      }
+    },
+    () => {}
+  );
+
+  return () => {
+    roomListeners.get(roomId)?.delete(callback);
+    unsubFirestore();
+  };
+}
+
+export function subscribeToPlayers(
+  roomId: string,
+  callback: (players: Record<string, RoomPlayer>) => void
+): Unsubscribe {
+  if (!playersListeners.has(roomId)) {
+    playersListeners.set(roomId, new Set());
+  }
+  playersListeners.get(roomId)!.add(callback);
+
+  // Send cached value instantly (0ms)
+  const cached = localStore.get(roomId);
+  if (cached?.players && Object.keys(cached.players).length > 0) {
+    callback(cached.players);
+  }
+
+  const playersRef = collection(db, 'rooms', roomId, 'players');
+  const unsubFirestore = onSnapshot(
+    playersRef,
+    (snap) => {
+      const pMap: Record<string, RoomPlayer> = {};
+      snap.docs.forEach((d) => {
+        pMap[d.id] = d.data() as RoomPlayer;
+      });
+      if (Object.keys(pMap).length > 0) {
+        let c = localStore.get(roomId);
+        if (c) {
+          c.players = { ...c.players, ...pMap };
+        }
+        callback(pMap);
+      }
+    },
+    () => {}
+  );
+
+  return () => {
+    playersListeners.get(roomId)?.delete(callback);
+    unsubFirestore();
+  };
+}
+
+export function subscribeToGame(
+  roomId: string,
+  gameId: string,
+  callback: (game: GameDocument | null) => void
+): Unsubscribe {
+  if (!gameListeners.has(roomId)) {
+    gameListeners.set(roomId, new Set());
+  }
+  gameListeners.get(roomId)!.add(callback);
+
+  // Send cached value instantly (0ms)
+  const cached = localStore.get(roomId);
+  if (cached?.game && cached.game.gameId === gameId) {
+    callback(cached.game);
+  }
+
+  const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
+  const unsubFirestore = onSnapshot(
+    gameRef,
+    (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as GameDocument;
+        let c = localStore.get(roomId);
+        if (c) {
+          // If remote version is newer or equal, update
+          if (!c.game || data.version >= c.game.version) {
+            c.game = data;
+            callback(data);
+          }
+        } else {
+          callback(data);
+        }
+      }
+    },
+    () => {}
+  );
+
+  return () => {
+    gameListeners.get(roomId)?.delete(callback);
+    unsubFirestore();
+  };
+}
+
+/**
+ * Creates a persistent Room in 0ms (Instant local + background Firestore sync)
  */
 export async function createRoom(
   user: UserProfile,
   maxPlayers: 2 | 3 | 4 = 4,
   customSettings?: Partial<RoomSettings>
-): Promise<{ roomId: string; roomCode: string }> {
+): Promise<{ roomId: string; roomCode: string; roomData: RoomDocument; p1Player: RoomPlayer }> {
   const roomCode = generateRoomCode();
   const roomRef = doc(collection(db, 'rooms'));
   const roomId = roomRef.id;
@@ -99,72 +315,6 @@ export async function createRoom(
     settings,
   };
 
-  await setDoc(roomRef, roomData);
-
-  // Add Creator as P1 Room Admin
-  const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
-  const p1Player: RoomPlayer = {
-    uid: user.uid,
-    playerId: `P1-${roomCode}`,
-    slot: 'P1',
-    displayName: user.displayName,
-    color: 'red',
-    avatar: user.avatar,
-    ready: true,
-    connected: true,
-    status: 'active',
-    joinedAt: Date.now(),
-    lastSeenAt: Date.now(),
-    voiceEnabled: false,
-  };
-
-  await setDoc(playerRef, p1Player);
-
-  // Update user's active room
-  await updateDoc(doc(db, 'users', user.uid), {
-    activeRoomId: roomId,
-    lastSeenAt: Date.now(),
-  }).catch(() => {});
-
-  return { roomId, roomCode };
-}
-
-/**
- * Creates a Solo Room with automated system bot players and immediately starts the game
- */
-export async function createSoloRoom(
-  user: UserProfile,
-  botCount: 1 | 3 = 1
-): Promise<{ roomId: string; roomCode: string }> {
-  const roomCode = generateRoomCode();
-  const roomRef = doc(collection(db, 'rooms'));
-  const roomId = roomRef.id;
-  const maxPlayers = (botCount === 1 ? 2 : 4) as 2 | 4;
-
-  const settings: RoomSettings = {
-    ...DEFAULT_SETTINGS,
-    maxPlayers,
-    turnTimeoutSeconds: 30,
-    strictThreeSixRule: true,
-  };
-
-  const roomData: RoomDocument = {
-    roomId,
-    roomCode,
-    adminUid: user.uid,
-    status: 'OPEN',
-    maxPlayers,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    currentGameId: null,
-    lastGameId: null,
-    settings,
-  };
-
-  await setDoc(roomRef, roomData);
-
-  // 1. Add Human Player (P1)
-  const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
   const p1Player: RoomPlayer = {
     uid: user.uid,
     playerId: `P1-${roomCode}`,
@@ -179,9 +329,94 @@ export async function createSoloRoom(
     lastSeenAt: Date.now(),
     voiceEnabled: false,
   };
-  await setDoc(playerRef, p1Player);
 
-  // 2. Add Automated System Bot Players
+  // 1. Instant local state & broadcast (0ms)
+  localStore.set(roomId, {
+    room: roomData,
+    players: { [user.uid]: p1Player },
+    game: null,
+    events: [],
+  });
+  notifyRoomSubscribers(roomId, roomData);
+  notifyPlayersSubscribers(roomId, { [user.uid]: p1Player });
+  broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: roomData, players: { [user.uid]: p1Player } });
+
+  // 2. Background Firestore write
+  const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
+  firestoreBackgroundSync(
+    Promise.all([
+      setDoc(roomRef, roomData),
+      setDoc(playerRef, p1Player),
+      updateDoc(doc(db, 'users', user.uid), {
+        activeRoomId: roomId,
+        lastSeenAt: Date.now(),
+      }).catch(() => {}),
+    ])
+  );
+
+  return { roomId, roomCode, roomData, p1Player };
+}
+
+/**
+ * Creates a Solo Room with automated system bot players and starts the game in 0ms!
+ */
+export async function createSoloRoom(
+  user: UserProfile,
+  botCount: 1 | 3 = 1,
+  customSettings?: Partial<RoomSettings>
+): Promise<{
+  roomId: string;
+  roomCode: string;
+  roomData: RoomDocument;
+  playersMap: Record<string, RoomPlayer>;
+  gameData: GameDocument;
+}> {
+  const roomCode = generateRoomCode();
+  const roomRef = doc(collection(db, 'rooms'));
+  const roomId = roomRef.id;
+  const maxPlayers = (botCount === 1 ? 2 : 4) as 2 | 4;
+
+  const settings: RoomSettings = {
+    ...DEFAULT_SETTINGS,
+    maxPlayers,
+    turnTimeoutSeconds: 30,
+    strictThreeSixRule: true,
+    ...customSettings,
+  };
+
+  const gameId = `game_${Date.now()}`;
+  const now = Date.now();
+
+  const roomData: RoomDocument = {
+    roomId,
+    roomCode,
+    adminUid: user.uid,
+    status: 'PLAYING',
+    maxPlayers,
+    createdAt: now,
+    updatedAt: now,
+    currentGameId: gameId,
+    lastGameId: null,
+    settings,
+  };
+
+  // 1. Human Player (P1)
+  const p1Player: RoomPlayer = {
+    uid: user.uid,
+    playerId: `P1-${roomCode}`,
+    slot: 'P1',
+    displayName: user.displayName || 'Player 1',
+    color: 'red',
+    avatar: user.avatar || '🦁',
+    ready: true,
+    connected: true,
+    status: 'active',
+    joinedAt: now,
+    lastSeenAt: now,
+    voiceEnabled: false,
+  };
+
+  // 2. Automated System Bot Players
   const botSlots: { slot: PlayerSlot; color: PlayerColor; name: string; avatar: string; uid: string }[] = [
     { slot: 'P2', color: 'green', name: 'রোবট সবুজ 🤖', avatar: '🤖', uid: `bot_${roomId}_p2` },
     { slot: 'P3', color: 'yellow', name: 'রোবট হলুদ ⚡', avatar: '⚡', uid: `bot_${roomId}_p3` },
@@ -189,8 +424,9 @@ export async function createSoloRoom(
   ];
 
   const selectedBots = botSlots.slice(0, botCount);
+  const playersMap: Record<string, RoomPlayer> = { [user.uid]: p1Player };
+
   for (const bot of selectedBots) {
-    const botRef = doc(db, 'rooms', roomId, 'players', bot.uid);
     const botPlayer: RoomPlayer = {
       uid: bot.uid,
       playerId: `${bot.slot}-${roomCode}`,
@@ -201,23 +437,77 @@ export async function createSoloRoom(
       ready: true,
       connected: true,
       status: 'active',
-      joinedAt: Date.now(),
-      lastSeenAt: Date.now(),
+      joinedAt: now,
+      lastSeenAt: now,
       voiceEnabled: false,
     };
-    await setDoc(botRef, botPlayer);
+    playersMap[bot.uid] = botPlayer;
   }
 
-  // Update user's active room
-  await updateDoc(doc(db, 'users', user.uid), {
-    activeRoomId: roomId,
-    lastSeenAt: Date.now(),
-  }).catch(() => {});
+  // 3. Initialize Game Document
+  const playerOrder = [user.uid, ...selectedBots.map((b) => b.uid)];
+  const initialTokens = createInitialTokens(playerOrder);
+  const turnTimeout = (settings.turnTimeoutSeconds || 30) * 1000;
 
-  // 3. Immediately start the game so player goes directly to the board
-  await startGame(roomId, user.uid);
+  const initialSnakePositions: Record<string, number> = {};
+  playerOrder.forEach((uid) => {
+    initialSnakePositions[uid] = 1;
+  });
 
-  return { roomId, roomCode };
+  const gameData: GameDocument = {
+    gameId,
+    roomId,
+    gameMode: settings.gameMode || 'CLASSIC',
+    status: 'AWAITING_ROLL',
+    playerOrder,
+    currentPlayerUid: playerOrder[0],
+    turnNumber: 1,
+    diceValue: null,
+    diceRolled: false,
+    consecutiveSixes: 0,
+    turnStartedAt: now,
+    turnExpiresAt: now + turnTimeout,
+    winnerUid: null,
+    rankings: [],
+    tokens: initialTokens,
+    snakePositions: initialSnakePositions,
+    snakeLastEvent: null,
+    version: 1,
+    startedAt: now,
+    endedAt: null,
+    lastAction: 'GAME_STARTED',
+    lastActionAt: now,
+    turnMessage: {
+      en: 'Game started! Red rolls first.',
+      bn: 'খেলা শুরু হয়েছে! লাল খেলোয়াড় প্রথমে চালবেন।',
+      type: 'info',
+    },
+  };
+
+  // 4. Update local cache immediately (0ms)
+  localStore.set(roomId, {
+    room: roomData,
+    players: playersMap,
+    game: gameData,
+    events: [],
+  });
+  notifyRoomSubscribers(roomId, roomData);
+  notifyPlayersSubscribers(roomId, playersMap);
+  notifyGameSubscribers(roomId, gameData);
+  broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: roomData, players: playersMap, game: gameData });
+
+  // 5. Background sync
+  const writes: Promise<any>[] = [
+    setDoc(roomRef, roomData),
+    setDoc(doc(db, 'rooms', roomId, 'players', user.uid), p1Player),
+    setDoc(doc(db, 'rooms', roomId, 'games', gameId), gameData),
+  ];
+  for (const bot of selectedBots) {
+    writes.push(setDoc(doc(db, 'rooms', roomId, 'players', bot.uid), playersMap[bot.uid]));
+  }
+  firestoreBackgroundSync(Promise.all(writes));
+
+  return { roomId, roomCode, roomData, playersMap, gameData };
 }
 
 /**
@@ -226,355 +516,435 @@ export async function createSoloRoom(
 export async function joinRoom(
   codeOrId: string,
   user: UserProfile
-): Promise<{ roomId: string; slot: PlayerSlot }> {
+): Promise<{ roomId: string; slot: PlayerSlot; roomData?: RoomDocument; player?: RoomPlayer }> {
   const cleanCode = codeOrId.trim();
 
-  // Try finding by roomCode or doc id
-  let roomId = cleanCode;
-  let roomDoc = await getDoc(doc(db, 'rooms', roomId));
+  // 1. Check local cache first (0ms)
+  let foundRoomId: string | null = null;
+  let cachedEntry: LocalRoomCache | null = null;
 
-  if (!roomDoc.exists()) {
-    // Query by roomCode
-    const q = query(
-      collection(db, 'rooms'),
-      where('roomCode', '==', cleanCode),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      throw new Error('errorRoomNotFound');
+  for (const [rId, cache] of localStore.entries()) {
+    if (cache.room.roomCode === cleanCode || rId === cleanCode) {
+      foundRoomId = rId;
+      cachedEntry = cache;
+      break;
     }
-    roomDoc = snap.docs[0];
-    roomId = roomDoc.id;
   }
 
-  const roomData = roomDoc.data() as RoomDocument;
+  let roomId = foundRoomId || cleanCode;
+  let roomDoc = null;
 
-  // Use transaction to join and allocate slot safely
-  const result = await runTransaction(db, async (transaction) => {
-    const freshRoomSnap = await transaction.get(doc(db, 'rooms', roomId));
-    if (!freshRoomSnap.exists()) {
-      throw new Error('errorRoomNotFound');
+  if (!cachedEntry) {
+    // Query Firestore
+    roomDoc = await getDoc(doc(db, 'rooms', roomId)).catch(() => null);
+    if (!roomDoc || !roomDoc.exists()) {
+      const q = query(collection(db, 'rooms'), where('roomCode', '==', cleanCode), limit(1));
+      const snap = await getDocs(q).catch(() => null);
+      if (snap && !snap.empty) {
+        roomDoc = snap.docs[0];
+        roomId = roomDoc.id;
+      } else {
+        throw new Error('errorRoomNotFound');
+      }
     }
+  }
 
-    const currentRoom = freshRoomSnap.data() as RoomDocument;
-    if (currentRoom.status === 'ARCHIVED') {
-      throw new Error('errorRoomNotFound');
+  const currentRoom: RoomDocument = cachedEntry?.room || (roomDoc?.data() as RoomDocument);
+  if (!currentRoom || currentRoom.status === 'ARCHIVED') {
+    throw new Error('errorRoomNotFound');
+  }
+
+  let existingPlayers: RoomPlayer[] = [];
+  if (cachedEntry) {
+    existingPlayers = Object.values(cachedEntry.players);
+  } else {
+    const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players')).catch(() => null);
+    if (playersSnap && !playersSnap.empty) {
+      existingPlayers = playersSnap.docs.map((d) => d.data() as RoomPlayer);
     }
+  }
 
-    // Check if player is already in the room
-    const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
-    const playerSnap = await transaction.get(playerRef);
+  const existingPlayer = existingPlayers.find((p) => p.uid === user.uid);
+  if (existingPlayer) {
+    return { roomId, slot: existingPlayer.slot, roomData: currentRoom, player: existingPlayer };
+  }
 
-    if (playerSnap.exists()) {
-      const existingPlayer = playerSnap.data() as RoomPlayer;
-      // Re-activate player
-      transaction.update(playerRef, {
-        connected: true,
-        status: 'active',
-        lastSeenAt: Date.now(),
-        displayName: user.displayName || existingPlayer.displayName,
-        avatar: user.avatar || existingPlayer.avatar,
-      });
-      return { roomId, slot: existingPlayer.slot };
-    }
+  const activePlayers = existingPlayers.filter((p) => p.status !== 'left');
+  if (activePlayers.length >= currentRoom.maxPlayers) {
+    throw new Error('errorRoomFull');
+  }
 
-    // Fetch existing players
-    const playersQuery = query(collection(db, 'rooms', roomId, 'players'));
-    const playersSnap = await getDocs(playersQuery);
-    const existingPlayers = playersSnap.docs.map((d) => d.data() as RoomPlayer);
+  const occupiedSlots = new Set(activePlayers.map((p) => p.slot));
+  const availableSlot = ALL_SLOTS.slice(0, currentRoom.maxPlayers).find((slot) => !occupiedSlots.has(slot));
 
-    const activePlayers = existingPlayers.filter((p) => p.status !== 'left');
-    if (activePlayers.length >= currentRoom.maxPlayers) {
-      throw new Error('errorRoomFull');
-    }
+  if (!availableSlot) {
+    throw new Error('errorRoomFull');
+  }
 
-    // Find first available slot
-    const occupiedSlots = new Set(activePlayers.map((p) => p.slot));
-    const availableSlot = ALL_SLOTS.slice(0, currentRoom.maxPlayers).find(
-      (slot) => !occupiedSlots.has(slot)
-    );
-
-    if (!availableSlot) {
-      throw new Error('errorRoomFull');
-    }
-
-    const assignedColor = SLOT_COLORS[availableSlot];
-
-    const newPlayer: RoomPlayer = {
-      uid: user.uid,
-      playerId: `${availableSlot}-${currentRoom.roomCode}`,
-      slot: availableSlot,
-      displayName: user.displayName,
-      color: assignedColor,
-      avatar: user.avatar,
-      ready: false,
-      connected: true,
-      status: 'active',
-      joinedAt: Date.now(),
-      lastSeenAt: Date.now(),
-      voiceEnabled: false,
-    };
-
-    transaction.set(playerRef, newPlayer);
-    transaction.update(doc(db, 'rooms', roomId), {
-      updatedAt: Date.now(),
-    });
-
-    return { roomId, slot: availableSlot };
-  });
-
-  // Update user's active room
-  await updateDoc(doc(db, 'users', user.uid), {
-    activeRoomId: roomId,
+  const assignedColor = SLOT_COLORS[availableSlot];
+  const newPlayer: RoomPlayer = {
+    uid: user.uid,
+    playerId: `${availableSlot}-${currentRoom.roomCode}`,
+    slot: availableSlot,
+    displayName: user.displayName || 'Player',
+    color: assignedColor,
+    avatar: user.avatar || '🎲',
+    ready: false,
+    connected: true,
+    status: 'active',
+    joinedAt: Date.now(),
     lastSeenAt: Date.now(),
-  }).catch(() => {});
+    voiceEnabled: false,
+  };
 
-  return result;
+  // Instant local update (0ms)
+  let cached = localStore.get(roomId);
+  if (!cached) {
+    cached = { room: currentRoom, players: {}, game: null, events: [] };
+    localStore.set(roomId, cached);
+  }
+  cached.players[user.uid] = newPlayer;
+  notifyPlayersSubscribers(roomId, cached.players);
+  broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
+
+  // Background Firestore write
+  firestoreBackgroundSync(
+    Promise.all([
+      setDoc(doc(db, 'rooms', roomId, 'players', user.uid), newPlayer),
+      updateDoc(doc(db, 'rooms', roomId), { updatedAt: Date.now() }).catch(() => {}),
+      updateDoc(doc(db, 'users', user.uid), { activeRoomId: roomId, lastSeenAt: Date.now() }).catch(() => {}),
+    ])
+  );
+
+  return { roomId, slot: availableSlot, roomData: currentRoom, player: newPlayer };
 }
 
 /**
- * Toggle Ready state
+ * Toggle Ready state (0ms instant)
  */
 export async function togglePlayerReady(
   roomId: string,
   uid: string,
   ready: boolean
 ): Promise<void> {
-  const playerRef = doc(db, 'rooms', roomId, 'players', uid);
-  await updateDoc(playerRef, { ready, lastSeenAt: Date.now() });
+  const cached = localStore.get(roomId);
+  if (cached && cached.players[uid]) {
+    cached.players[uid].ready = ready;
+    cached.players[uid].lastSeenAt = Date.now();
+    notifyPlayersSubscribers(roomId, cached.players);
+    broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
+  }
+
+  firestoreBackgroundSync(
+    updateDoc(doc(db, 'rooms', roomId, 'players', uid), { ready, lastSeenAt: Date.now() })
+  );
 }
 
 /**
- * Update Player Color / Name (Admin or Self)
- */
-export async function updatePlayerConfig(
-  roomId: string,
-  targetUid: string,
-  updates: { displayName?: string; color?: PlayerColor; customColorHex?: string }
-): Promise<void> {
-  const playerRef = doc(db, 'rooms', roomId, 'players', targetUid);
-  await updateDoc(playerRef, {
-    ...updates,
-    lastSeenAt: Date.now(),
-  });
-}
-
-/**
- * Starts a new Game inside a Room (Admin privilege)
+ * Starts a new Game inside a Room (0ms instant)
  */
 export async function startGame(roomId: string, adminUid: string): Promise<string> {
-  return await runTransaction(db, async (transaction) => {
-    const roomRef = doc(db, 'rooms', roomId);
-    const roomSnap = await transaction.get(roomRef);
-    if (!roomSnap.exists()) throw new Error('errorRoomNotFound');
+  const cached = localStore.get(roomId);
+  let roomData = cached?.room;
 
-    const roomData = roomSnap.data() as RoomDocument;
-    if (roomData.adminUid !== adminUid) {
-      throw new Error('errorNotAdmin');
-    }
+  if (!roomData) {
+    const snap = await getDoc(doc(db, 'rooms', roomId)).catch(() => null);
+    if (snap?.exists()) roomData = snap.data() as RoomDocument;
+  }
 
-    // Fetch players
-    const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players'));
-    const players = playersSnap.docs
-      .map((d) => d.data() as RoomPlayer)
-      .filter((p) => p.status === 'active');
+  if (!roomData) throw new Error('errorRoomNotFound');
+  if (roomData.adminUid !== adminUid) throw new Error('errorNotAdmin');
 
-    if (players.length < 2) {
-      throw new Error('Minimum 2 players required to start');
-    }
+  let players: RoomPlayer[] = [];
+  if (cached) {
+    players = Object.values(cached.players).filter((p) => p.status === 'active');
+  } else {
+    const snap = await getDocs(collection(db, 'rooms', roomId, 'players')).catch(() => null);
+    if (snap) players = snap.docs.map((d) => d.data() as RoomPlayer);
+  }
 
-    // Sort players by slot P1, P2, P3, P4
-    players.sort((a, b) => a.slot.localeCompare(b.slot));
-    const playerOrder = players.map((p) => p.uid);
+  if (players.length < 2) {
+    throw new Error('Minimum 2 players required to start');
+  }
 
-    const gameId = `game_${Date.now()}`;
-    const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
+  players.sort((a, b) => a.slot.localeCompare(b.slot));
+  const playerOrder = players.map((p) => p.uid);
 
-    const initialTokens = createInitialTokens(playerOrder);
+  const gameId = `game_${Date.now()}`;
+  const initialTokens = createInitialTokens(playerOrder);
+  const turnTimeout = (roomData.settings.turnTimeoutSeconds || 30) * 1000;
+  const now = Date.now();
 
-    const turnTimeout = (roomData.settings.turnTimeoutSeconds || 30) * 1000;
-    const now = Date.now();
-
-    const gameData: GameDocument = {
-      gameId,
-      roomId,
-      status: 'AWAITING_ROLL',
-      playerOrder,
-      currentPlayerUid: playerOrder[0],
-      turnNumber: 1,
-      diceValue: null,
-      diceRolled: false,
-      consecutiveSixes: 0,
-      turnStartedAt: now,
-      turnExpiresAt: now + turnTimeout,
-      winnerUid: null,
-      rankings: [],
-      tokens: initialTokens,
-      version: 1,
-      startedAt: now,
-      endedAt: null,
-      lastAction: 'GAME_STARTED',
-      lastActionAt: now,
-      turnMessage: {
-        en: 'Game started! Red player rolls first.',
-        bn: 'খেলা শুরু হয়েছে! লাল খেলোয়াড় প্রথমে চালবেন।',
-        type: 'info',
-      },
-    };
-
-    transaction.set(gameRef, gameData);
-    transaction.update(roomRef, {
-      currentGameId: gameId,
-      status: 'PLAYING',
-      updatedAt: now,
-    });
-
-    // Record Event
-    const eventRef = doc(collection(db, 'rooms', roomId, 'games', gameId, 'events'));
-    transaction.set(eventRef, {
-      id: eventRef.id,
-      gameId,
-      type: 'GAME_STARTED' as GameEventType,
-      uid: adminUid,
-      timestamp: now,
-      messageEn: 'Game has started!',
-      messageBn: 'খেলা শুরু হয়েছে!',
-    });
-
-    return gameId;
+  const initialSnakePositions: Record<string, number> = {};
+  playerOrder.forEach((uid) => {
+    initialSnakePositions[uid] = 1;
   });
+
+  const gameData: GameDocument = {
+    gameId,
+    roomId,
+    gameMode: roomData.settings.gameMode || 'CLASSIC',
+    status: 'AWAITING_ROLL',
+    playerOrder,
+    currentPlayerUid: playerOrder[0],
+    turnNumber: 1,
+    diceValue: null,
+    diceRolled: false,
+    consecutiveSixes: 0,
+    turnStartedAt: now,
+    turnExpiresAt: now + turnTimeout,
+    winnerUid: null,
+    rankings: [],
+    tokens: initialTokens,
+    snakePositions: initialSnakePositions,
+    snakeLastEvent: null,
+    version: 1,
+    startedAt: now,
+    endedAt: null,
+    lastAction: 'GAME_STARTED',
+    lastActionAt: now,
+    turnMessage: {
+      en: 'Game started! Red player rolls first.',
+      bn: 'খেলা শুরু হয়েছে! লাল খেলোয়াড় প্রথমে চালবেন।',
+      type: 'info',
+    },
+  };
+
+  // Instant local update (0ms)
+  let c = localStore.get(roomId);
+  if (!c) {
+    c = { room: roomData, players: {}, game: null, events: [] };
+    localStore.set(roomId, c);
+  }
+  c.room.currentGameId = gameId;
+  c.room.status = 'PLAYING';
+  c.room.updatedAt = now;
+  c.game = gameData;
+
+  notifyRoomSubscribers(roomId, c.room);
+  notifyGameSubscribers(roomId, gameData);
+  broadcastLocalUpdate('GAME_UPDATED', roomId, { game: gameData });
+  broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: c.room });
+
+  // Background Firestore sync
+  const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
+  const roomRef = doc(db, 'rooms', roomId);
+  firestoreBackgroundSync(
+    Promise.all([
+      setDoc(gameRef, gameData),
+      updateDoc(roomRef, {
+        currentGameId: gameId,
+        status: 'PLAYING',
+        updatedAt: now,
+      }).catch(() => {}),
+    ])
+  );
+
+  return gameId;
 }
 
 /**
- * Roll Dice (Server-Authoritative with 3-consecutive-sixes logic)
+ * Roll Dice (Zero-Latency Local Engine + Fast Broadcast + Async Sync)
  */
 export async function rollDice(
   roomId: string,
   gameId: string,
   user: UserProfile,
   expectedVersion: number
-): Promise<{ diceValue: number; legalMoves: number[] }> {
-  return await runTransaction(db, async (transaction) => {
-    const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
-    const gameSnap = await transaction.get(gameRef);
-    if (!gameSnap.exists()) throw new Error('Game not found');
+): Promise<{ diceValue: number; legalMoves: number[]; updatedGame: GameDocument }> {
+  let cached = localStore.get(roomId);
+  let game = cached?.game;
 
-    const game = gameSnap.data() as GameDocument;
-    if (game.currentPlayerUid !== user.uid) {
-      throw new Error('errorNotYourTurn');
+  if (!game || game.gameId !== gameId) {
+    const snap = await getDoc(doc(db, 'rooms', roomId, 'games', gameId)).catch(() => null);
+    if (snap?.exists()) {
+      game = snap.data() as GameDocument;
+      if (cached) cached.game = game;
     }
-    if (game.status !== 'AWAITING_ROLL' && game.status !== 'EXTRA_ROLL') {
-      throw new Error('Invalid game status for roll');
-    }
-    if (game.diceRolled) {
-      throw new Error('Dice already rolled for this turn');
-    }
-    if (game.version !== expectedVersion) {
-      throw new Error('State out of sync. Please retry.');
-    }
+  }
 
-    const roomRef = doc(db, 'rooms', roomId);
-    const roomSnap = await transaction.get(roomRef);
-    const room = roomSnap.data() as RoomDocument;
+  if (!game) throw new Error('Game not found');
+  if (game.currentPlayerUid !== user.uid) {
+    throw new Error('errorNotYourTurn');
+  }
 
-    // Fetch players to build slotMap
-    const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players'));
-    const slotMap: Record<string, PlayerSlot> = {};
-    const nameMap: Record<string, string> = {};
-    playersSnap.docs.forEach((d) => {
-      const p = d.data() as RoomPlayer;
+  const room = cached?.room || {
+    settings: DEFAULT_SETTINGS,
+  } as RoomDocument;
+
+  // Build slotMap and nameMap
+  const slotMap: Record<string, PlayerSlot> = {};
+  const nameMap: Record<string, string> = {};
+  if (cached?.players) {
+    Object.values(cached.players).forEach((p) => {
       slotMap[p.uid] = p.slot;
       nameMap[p.uid] = p.displayName;
     });
+  }
 
-    const playerSlot = slotMap[user.uid] || 'P1';
+  const playerSlot = slotMap[user.uid] || 'P1';
 
-    // Generate secure random dice
-    const diceValue = generateSecureDice();
-    const now = Date.now();
-    const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
+  // Compute secure random dice in 0ms
+  const diceValue = generateSecureDice();
+  const now = Date.now();
+  const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
 
-    let consecutiveSixes = game.consecutiveSixes || 0;
-    if (diceValue === 6) {
-      consecutiveSixes += 1;
-    } else {
-      consecutiveSixes = 0;
-    }
+  let consecutiveSixes = (game.consecutiveSixes || 0) + (diceValue === 6 ? 1 : - (game.consecutiveSixes || 0));
+  if (diceValue !== 6) consecutiveSixes = 0;
 
-    // MANDATORY BANGLADESHI RULE: 3 Consecutive Sixes Penalty!
-    if (consecutiveSixes === 3 && room.settings.strictThreeSixRule) {
-      const nextUid = getNextPlayerUid(game.playerOrder, user.uid, game.tokens);
-      const nextSlot = slotMap[nextUid] || 'P1';
+  let updatedGame: GameDocument;
 
-      transaction.update(gameRef, {
-        diceValue: 6,
+  // 1. Mandatory 3-Consecutive Sixes Penalty Rule
+  if (consecutiveSixes === 3 && room.settings.strictThreeSixRule) {
+    const nextUid = getNextPlayerUid(game.playerOrder, user.uid, game.tokens);
+    updatedGame = {
+      ...game,
+      diceValue: 6,
+      diceRolled: false,
+      consecutiveSixes: 0,
+      currentPlayerUid: nextUid,
+      turnNumber: game.turnNumber + 1,
+      status: 'AWAITING_ROLL',
+      turnStartedAt: now,
+      turnExpiresAt: now + turnTimeout,
+      version: game.version + 1,
+      lastAction: 'THREE_SIX_PENALTY',
+      lastActionAt: now,
+      turnMessage: {
+        en: 'Three 6s in a row! Turn cancelled and passed.',
+        bn: 'পরপর ৩ বার ৬! চাল বাতিল এবং পরবর্তী খেলোয়াড়ের পালা।',
+        type: 'penalty',
+      },
+    };
+
+    // Update memory & notify
+    if (cached) cached.game = updatedGame;
+    notifyGameSubscribers(roomId, updatedGame);
+    broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+
+    // Background write
+    firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+    return { diceValue, legalMoves: [], updatedGame };
+  }
+
+  // 1.5. Special Snake & Ladder Game Mode Engine
+  const isSnakeLadder = room.settings.gameMode === 'SNAKE_LADDER' || game.gameMode === 'SNAKE_LADDER';
+  if (isSnakeLadder) {
+    const curPos = game.snakePositions?.[user.uid] || 1;
+    const newPos = curPos + diceValue;
+
+    if (newPos > 100) {
+      // Exceeds 100 - cannot move
+      let nextUid = user.uid;
+      let msg: {
+        en: string;
+        bn: string;
+        type: 'info' | 'penalty' | 'capture' | 'six' | 'home' | 'win';
+      } = {
+        en: `Rolled ${diceValue}. Cannot exceed 100! Turn passed.`,
+        bn: `${diceValue} পড়েছে। ১০০ অতিক্রম করা যাবে না! চাল পাস হয়েছে।`,
+        type: 'penalty',
+      };
+
+      if (diceValue === 6) {
+        msg = {
+          en: `Rolled 6! Cannot exceed 100, but 6 gives you another roll.`,
+          bn: `৬ পড়েছে! ১০০ অতিক্রম করা যাবে না, কিন্তু ৬ পাওয়ায় আবার চালুন।`,
+          type: 'six',
+        };
+      } else {
+        nextUid = getNextPlayerUid(game.playerOrder, user.uid, game.tokens);
+      }
+
+      updatedGame = {
+        ...game,
+        diceValue,
         diceRolled: false,
-        consecutiveSixes: 0,
+        consecutiveSixes: diceValue === 6 ? consecutiveSixes : 0,
         currentPlayerUid: nextUid,
         turnNumber: game.turnNumber + 1,
         status: 'AWAITING_ROLL',
         turnStartedAt: now,
         turnExpiresAt: now + turnTimeout,
         version: game.version + 1,
-        lastAction: 'THREE_SIX_PENALTY',
+        lastAction: 'SNAKE_EXCEED_100',
         lastActionAt: now,
-        turnMessage: {
-          en: 'Three 6s in a row! Turn cancelled and passed.',
-          bn: 'পরপর ৩ বার ৬! চাল বাতিল এবং পরবর্তী খেলোয়াড়ের পালা।',
-          type: 'penalty',
-        },
-      });
+        turnMessage: msg,
+      };
+    } else {
+      let finalPos = newPos;
+      let eventType: 'LADDER' | 'SNAKE' | 'NORMAL' = 'NORMAL';
 
-      const eventRef = doc(collection(db, 'rooms', roomId, 'games', gameId, 'events'));
-      transaction.set(eventRef, {
-        id: eventRef.id,
-        gameId,
-        type: 'THREE_SIX_PENALTY' as GameEventType,
-        uid: user.uid,
-        slot: playerSlot,
-        timestamp: now,
-        messageEn: `${nameMap[user.uid] || 'Player'} rolled three consecutive 6s! Turn forfeited.`,
-        messageBn: `${nameMap[user.uid] || 'খেলোয়াড়'} পরপর ৩ বার ৬ ফেলায় চাল বাতিল হয়েছে!`,
-      });
+      if (LADDERS_MAP[newPos]) {
+        finalPos = LADDERS_MAP[newPos];
+        eventType = 'LADDER';
+      } else if (SNAKES_MAP[newPos]) {
+        finalPos = SNAKES_MAP[newPos];
+        eventType = 'SNAKE';
+      }
 
-      return { diceValue, legalMoves: [] };
-    }
+      const updatedPositions = {
+        ...(game.snakePositions || {}),
+        [user.uid]: finalPos,
+      };
 
-    // Calculate legal moves
-    const legalMoves = getLegalMoves(
-      user.uid,
-      playerSlot,
-      diceValue,
-      game.tokens,
-      slotMap,
-      room.settings
-    );
+      const hasWon = finalPos === 100;
 
-    // If NO legal moves available:
-    if (legalMoves.length === 0) {
-      if (diceValue === 6) {
-        // Player rolled a 6 but had no moves, they get an extra roll
-        transaction.update(gameRef, {
+      if (hasWon) {
+        updatedGame = {
+          ...game,
+          diceValue,
+          diceRolled: true,
+          consecutiveSixes: 0,
+          status: 'GAME_OVER',
+          winnerUid: user.uid,
+          rankings: [{ uid: user.uid, rank: 1, finishedAt: now }],
+          endedAt: now,
+          version: game.version + 1,
+          lastAction: 'SNAKE_WIN',
+          lastActionAt: now,
+          snakePositions: updatedPositions,
+          snakeLastEvent: {
+            type: eventType,
+            from: newPos,
+            to: finalPos,
+            uid: user.uid,
+          },
+          turnMessage: {
+            en: `🏆 ${nameMap[user.uid] || 'Player'} reached 100 and WON the game!`,
+            bn: `🏆 ${nameMap[user.uid] || 'খেলোয়াড়'} ১০০ নম্বরে পৌঁছে বিজয়ী হলেন!`,
+            type: 'win',
+          },
+        };
+      } else if (diceValue === 6) {
+        updatedGame = {
+          ...game,
           diceValue,
           diceRolled: false,
           consecutiveSixes,
-          status: 'EXTRA_ROLL',
+          status: 'AWAITING_ROLL',
           turnStartedAt: now,
           turnExpiresAt: now + turnTimeout,
           version: game.version + 1,
-          lastAction: 'DICE_ROLLED_EXTRA_NO_MOVES',
+          lastAction: 'SNAKE_MOVED_EXTRA_ROLL',
           lastActionAt: now,
+          snakePositions: updatedPositions,
+          snakeLastEvent: {
+            type: eventType,
+            from: newPos,
+            to: finalPos,
+            uid: user.uid,
+          },
           turnMessage: {
-            en: 'Rolled 6 with no movable tokens! Roll again.',
-            bn: '৬ পড়েছে কিন্তু চালার মতো ঘুঁটি নেই! আবার চালুন।',
+            en: `Rolled 6! Moved to ${finalPos}. Roll again!`,
+            bn: `৬ পড়েছে! ${finalPos} নম্বরে গেলেন। আবার চালুন!`,
             type: 'six',
           },
-        });
+        };
       } else {
-        // Turn passes to next player
         const nextUid = getNextPlayerUid(game.playerOrder, user.uid, game.tokens);
-        transaction.update(gameRef, {
+        updatedGame = {
+          ...game,
           diceValue,
           diceRolled: false,
           consecutiveSixes: 0,
@@ -584,43 +954,122 @@ export async function rollDice(
           turnStartedAt: now,
           turnExpiresAt: now + turnTimeout,
           version: game.version + 1,
-          lastAction: 'NO_LEGAL_MOVES',
+          lastAction: 'SNAKE_MOVED',
           lastActionAt: now,
-          turnMessage: {
-            en: `Rolled ${diceValue}. No legal moves available. Turn passed.`,
-            bn: `${diceValue} পড়েছে। চাল দেওয়ার ঘুঁটি নেই, চাল পাস হয়েছে।`,
-            type: 'info',
+          snakePositions: updatedPositions,
+          snakeLastEvent: {
+            type: eventType,
+            from: newPos,
+            to: finalPos,
+            uid: user.uid,
           },
-        });
+          turnMessage: {
+            en: `${nameMap[user.uid] || 'Player'} rolled ${diceValue} and moved to ${finalPos}.`,
+            bn: `${nameMap[user.uid] || 'খেলোয়াড়'} ${diceValue} ফেলে ${finalPos} নম্বরে গেলেন।`,
+            type: eventType === 'LADDER' ? 'home' : eventType === 'SNAKE' ? 'penalty' : 'info',
+          },
+        };
       }
-
-      return { diceValue, legalMoves: [] };
     }
 
-    // Legal moves available -> AWAITING_TOKEN_SELECTION
-    transaction.update(gameRef, {
-      diceValue,
-      diceRolled: true,
-      consecutiveSixes,
-      status: 'AWAITING_TOKEN_SELECTION',
-      turnStartedAt: now,
-      turnExpiresAt: now + turnTimeout,
-      version: game.version + 1,
-      lastAction: 'DICE_ROLLED',
-      lastActionAt: now,
-      turnMessage: {
-        en: `Rolled ${diceValue}. Select a highlighted token to move.`,
-        bn: `${diceValue} পড়েছে। চালার জন্য হাইলাইট করা ঘুঁটি নির্বাচন করুন।`,
-        type: diceValue === 6 ? 'six' : 'info',
-      },
-    });
+    if (cached) cached.game = updatedGame;
+    notifyGameSubscribers(roomId, updatedGame);
+    broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+    firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+    return { diceValue, legalMoves: [], updatedGame };
+  }
 
-    return { diceValue, legalMoves };
-  });
+  // 2. Compute Legal Moves
+  const legalMoves = getLegalMoves(
+    user.uid,
+    playerSlot,
+    diceValue,
+    game.tokens,
+    slotMap,
+    room.settings
+  );
+
+  // If NO legal moves available:
+  if (legalMoves.length === 0) {
+    if (diceValue === 6) {
+      // Extra roll granted
+      updatedGame = {
+        ...game,
+        diceValue,
+        diceRolled: false,
+        consecutiveSixes,
+        status: 'EXTRA_ROLL',
+        turnStartedAt: now,
+        turnExpiresAt: now + turnTimeout,
+        version: game.version + 1,
+        lastAction: 'DICE_ROLLED_EXTRA_NO_MOVES',
+        lastActionAt: now,
+        turnMessage: {
+          en: 'Rolled 6 with no movable tokens! Roll again.',
+          bn: '৬ পড়েছে কিন্তু চালার মতো ঘুঁটি নেই! আবার চালুন।',
+          type: 'six',
+        },
+      };
+    } else {
+      // Turn passes to next player
+      const nextUid = getNextPlayerUid(game.playerOrder, user.uid, game.tokens);
+      updatedGame = {
+        ...game,
+        diceValue,
+        diceRolled: false,
+        consecutiveSixes: 0,
+        currentPlayerUid: nextUid,
+        turnNumber: game.turnNumber + 1,
+        status: 'AWAITING_ROLL',
+        turnStartedAt: now,
+        turnExpiresAt: now + turnTimeout,
+        version: game.version + 1,
+        lastAction: 'NO_LEGAL_MOVES',
+        lastActionAt: now,
+        turnMessage: {
+          en: `Rolled ${diceValue}. No legal moves available. Turn passed.`,
+          bn: `${diceValue} পড়েছে। চাল দেওয়ার ঘুঁটি নেই, চাল পাস হয়েছে।`,
+          type: 'info',
+        },
+      };
+    }
+
+    if (cached) cached.game = updatedGame;
+    notifyGameSubscribers(roomId, updatedGame);
+    broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+    firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+    return { diceValue, legalMoves: [], updatedGame };
+  }
+
+  // 3. Legal moves available -> AWAITING_TOKEN_SELECTION
+  updatedGame = {
+    ...game,
+    diceValue,
+    diceRolled: true,
+    consecutiveSixes,
+    status: 'AWAITING_TOKEN_SELECTION',
+    turnStartedAt: now,
+    turnExpiresAt: now + turnTimeout,
+    version: game.version + 1,
+    lastAction: 'DICE_ROLLED',
+    lastActionAt: now,
+    turnMessage: {
+      en: `Rolled ${diceValue}. Select a highlighted token to move.`,
+      bn: `${diceValue} পড়েছে। চালার জন্য হাইলাইট করা ঘুঁটি নির্বাচন করুন।`,
+      type: diceValue === 6 ? 'six' : 'info',
+    },
+  };
+
+  if (cached) cached.game = updatedGame;
+  notifyGameSubscribers(roomId, updatedGame);
+  broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+  firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+
+  return { diceValue, legalMoves, updatedGame };
 }
 
 /**
- * Move Token (Server-Authoritative movement, capture resolution, home entry, win calculation)
+ * Move Token (Zero-Latency Local Engine + Fast Broadcast + Async Sync)
  */
 export async function moveToken(
   roomId: string,
@@ -628,312 +1077,351 @@ export async function moveToken(
   user: UserProfile,
   tokenId: number,
   expectedVersion: number
-): Promise<void> {
-  await runTransaction(db, async (transaction) => {
-    const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
-    const gameSnap = await transaction.get(gameRef);
-    if (!gameSnap.exists()) throw new Error('Game not found');
+): Promise<{ updatedGame: GameDocument }> {
+  let cached = localStore.get(roomId);
+  let game = cached?.game;
 
-    const game = gameSnap.data() as GameDocument;
-    if (game.currentPlayerUid !== user.uid) {
-      throw new Error('errorNotYourTurn');
+  if (!game || game.gameId !== gameId) {
+    const snap = await getDoc(doc(db, 'rooms', roomId, 'games', gameId)).catch(() => null);
+    if (snap?.exists()) {
+      game = snap.data() as GameDocument;
+      if (cached) cached.game = game;
     }
-    if (game.status !== 'AWAITING_TOKEN_SELECTION') {
-      throw new Error('Not in token selection phase');
-    }
-    if (!game.diceRolled || game.diceValue === null) {
-      throw new Error('Dice not rolled');
-    }
-    if (game.version !== expectedVersion) {
-      throw new Error('State out of sync. Please retry.');
-    }
+  }
 
-    const roomRef = doc(db, 'rooms', roomId);
-    const roomSnap = await transaction.get(roomRef);
-    const room = roomSnap.data() as RoomDocument;
+  if (!game) throw new Error('Game not found');
+  if (game.currentPlayerUid !== user.uid) {
+    throw new Error('errorNotYourTurn');
+  }
+  if (!game.diceRolled || game.diceValue === null) {
+    throw new Error('Dice not rolled');
+  }
 
-    // Fetch players for slot mapping and display names
-    const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players'));
-    const slotMap: Record<string, PlayerSlot> = {};
-    const nameMap: Record<string, string> = {};
-    playersSnap.docs.forEach((d) => {
-      const p = d.data() as RoomPlayer;
+  const room = cached?.room || { settings: DEFAULT_SETTINGS, roomCode: '000000' } as RoomDocument;
+
+  const slotMap: Record<string, PlayerSlot> = {};
+  const nameMap: Record<string, string> = {};
+  if (cached?.players) {
+    Object.values(cached.players).forEach((p) => {
       slotMap[p.uid] = p.slot;
       nameMap[p.uid] = p.displayName;
     });
+  }
 
-    const playerSlot = slotMap[user.uid] || 'P1';
-    const playerTokens = game.tokens[user.uid];
-    if (!playerTokens) throw new Error('Tokens not found for player');
+  const playerSlot = slotMap[user.uid] || 'P1';
+  const playerTokens = game.tokens[user.uid];
+  if (!playerTokens) throw new Error('Tokens not found for player');
 
-    const token = playerTokens[tokenId.toString()] || playerTokens[tokenId];
-    if (!token) throw new Error('Token does not exist');
+  const token = playerTokens[tokenId.toString()] || playerTokens[tokenId];
+  if (!token) throw new Error('Token does not exist');
 
-    // Calculate move
-    const moveCalc = calculateTokenMove(
-      token,
-      playerSlot,
-      user.uid,
-      game.diceValue,
-      game.tokens,
-      slotMap,
-      room.settings
-    );
+  // Calculate move in 0ms
+  const moveCalc = calculateTokenMove(
+    token,
+    playerSlot,
+    user.uid,
+    game.diceValue,
+    game.tokens,
+    slotMap,
+    room.settings
+  );
 
-    if (!moveCalc.canMove) {
-      throw new Error(moveCalc.reason || 'errorInvalidMove');
+  if (!moveCalc.canMove) {
+    throw new Error(moveCalc.reason || 'errorInvalidMove');
+  }
+
+  const updatedTokens: GameDocument['tokens'] = JSON.parse(JSON.stringify(game.tokens));
+  updatedTokens[user.uid][tokenId.toString()] = {
+    id: tokenId,
+    zone: moveCalc.newZone,
+    progress: moveCalc.newProgress,
+  };
+
+  const now = Date.now();
+  const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
+
+  // Handle captures
+  let lastCapturedToken: GameDocument['lastCapturedToken'] = null;
+  if (moveCalc.capturedTokens.length > 0) {
+    for (const cap of moveCalc.capturedTokens) {
+      updatedTokens[cap.uid][cap.tokenId.toString()] = {
+        id: cap.tokenId,
+        zone: 'YARD',
+        progress: -1,
+      };
+      lastCapturedToken = {
+        capturedUid: cap.uid,
+        tokenId: cap.tokenId,
+      };
     }
+  }
 
-    // Clone tokens object
-    const updatedTokens: GameDocument['tokens'] = JSON.parse(JSON.stringify(game.tokens));
-    updatedTokens[user.uid][tokenId.toString()] = {
-      id: tokenId,
-      zone: moveCalc.newZone,
-      progress: moveCalc.newProgress,
+  // Check win condition
+  const tokensToWin = room.settings.tokensToWin || (room.settings.gameMode === 'RUSH' ? 2 : 4);
+  const won = hasPlayerWon(user.uid, updatedTokens, tokensToWin);
+
+  let updatedGame: GameDocument;
+
+  if (won) {
+    const updatedRankings = [
+      ...game.rankings,
+      { uid: user.uid, rank: game.rankings.length + 1, finishedAt: now },
+    ];
+
+    updatedGame = {
+      ...game,
+      tokens: updatedTokens,
+      winnerUid: user.uid,
+      rankings: updatedRankings,
+      status: 'GAME_OVER',
+      endedAt: now,
+      version: game.version + 1,
+      lastAction: 'GAME_FINISHED',
+      lastActionAt: now,
+      turnMessage: {
+        en: `${nameMap[user.uid] || 'Player'} won the match! 🎉`,
+        bn: `${nameMap[user.uid] || 'খেলোয়াড়'} খেলায় বিজয়ী হয়েছেন! 🎉`,
+        type: 'win',
+      },
     };
 
-    const now = Date.now();
-    const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
-
-    // Handle captures
-    let lastCapturedToken: GameDocument['lastCapturedToken'] = null;
-    if (moveCalc.capturedTokens.length > 0) {
-      for (const cap of moveCalc.capturedTokens) {
-        updatedTokens[cap.uid][cap.tokenId.toString()] = {
-          id: cap.tokenId,
-          zone: 'YARD',
-          progress: -1,
-        };
-        lastCapturedToken = {
-          capturedUid: cap.uid,
-          tokenId: cap.tokenId,
-        };
-
-        // Record capture event
-        const capEventRef = doc(collection(db, 'rooms', roomId, 'games', gameId, 'events'));
-        transaction.set(capEventRef, {
-          id: capEventRef.id,
-          gameId,
-          type: 'TOKEN_CAPTURED' as GameEventType,
-          uid: user.uid,
-          slot: playerSlot,
-          timestamp: now,
-          payload: { capturedUid: cap.uid, tokenId: cap.tokenId },
-          messageEn: `${nameMap[user.uid]} captured ${nameMap[cap.uid]}'s token!`,
-          messageBn: `${nameMap[user.uid]} ${nameMap[cap.uid]}-এর ঘুঁটি কেটে দিয়েছে!`,
-        });
-      }
+    if (cached) {
+      cached.game = updatedGame;
+      cached.room.status = 'FINISHED';
+      cached.room.lastGameId = gameId;
     }
 
-    // Record Home Entry event
-    if (moveCalc.isHome) {
-      const homeEventRef = doc(collection(db, 'rooms', roomId, 'games', gameId, 'events'));
-      transaction.set(homeEventRef, {
-        id: homeEventRef.id,
-        gameId,
-        type: 'TOKEN_HOME' as GameEventType,
-        uid: user.uid,
-        slot: playerSlot,
-        timestamp: now,
-        payload: { tokenId },
-        messageEn: `${nameMap[user.uid]}'s token reached Home!`,
-        messageBn: `${nameMap[user.uid]}-এর ঘুঁটি ঘরে পৌঁছেছে!`,
-      });
-    }
+    notifyGameSubscribers(roomId, updatedGame);
+    if (cached) notifyRoomSubscribers(roomId, cached.room);
+    broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
 
-    // Check if player won
-    const tokensToWin = room.settings.tokensToWin || (room.settings.gameMode === 'RUSH' ? 2 : 4);
-    const won = hasPlayerWon(user.uid, updatedTokens, tokensToWin);
-    if (won) {
-      // Record finish ranking
-      const updatedRankings = [
-        ...game.rankings,
-        { uid: user.uid, rank: game.rankings.length + 1, finishedAt: now },
-      ];
+    // History record
+    const historyRecord: GameHistoryRecord = {
+      gameId,
+      roomId,
+      roomCode: room.roomCode,
+      playedAt: game.startedAt,
+      durationSeconds: Math.round((now - game.startedAt) / 1000),
+      winnerUid: user.uid,
+      winnerName: nameMap[user.uid] || 'Player',
+      winnerColor: slotMap[user.uid] ? SLOT_COLORS[slotMap[user.uid]] : 'red',
+      gameMode: room.settings.gameMode || 'CLASSIC',
+      players: game.playerOrder.map((pUid) => ({
+        uid: pUid,
+        displayName: nameMap[pUid] || 'Player',
+        color: slotMap[pUid] ? SLOT_COLORS[slotMap[pUid]] : 'red',
+        tokensHome: countTokensHome(pUid, updatedTokens),
+      })),
+    };
 
-      // Game is finished when 1st player wins
-      transaction.update(gameRef, {
-        tokens: updatedTokens,
-        winnerUid: user.uid,
-        rankings: updatedRankings,
-        status: 'GAME_OVER',
-        endedAt: now,
-        version: game.version + 1,
-        lastAction: 'GAME_FINISHED',
-        lastActionAt: now,
-        turnMessage: {
-          en: `${nameMap[user.uid]} won the match! 🎉`,
-          bn: `${nameMap[user.uid]} খেলায় বিজয়ী হয়েছেন! 🎉`,
-          type: 'win',
-        },
-      });
+    firestoreBackgroundSync(
+      Promise.all([
+        setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame),
+        updateDoc(doc(db, 'rooms', roomId), { status: 'FINISHED', lastGameId: gameId, updatedAt: now }).catch(() => {}),
+        setDoc(doc(db, 'rooms', roomId, 'history', gameId), historyRecord).catch(() => {}),
+      ])
+    );
 
-      transaction.update(roomRef, {
-        status: 'FINISHED',
-        lastGameId: gameId,
-        updatedAt: now,
-      });
+    return { updatedGame };
+  }
 
-      // Save to Game History
-      const historyRef = doc(db, 'rooms', roomId, 'history', gameId);
-      const historyRecord: GameHistoryRecord = {
-        gameId,
-        roomId,
-        roomCode: room.roomCode,
-        playedAt: game.startedAt,
-        durationSeconds: Math.round((now - game.startedAt) / 1000),
-        winnerUid: user.uid,
-        winnerName: nameMap[user.uid] || 'Player',
-        winnerColor: (slotMap[user.uid] ? SLOT_COLORS[slotMap[user.uid]] : 'red'),
-        gameMode: room.settings.gameMode || 'CLASSIC',
-        players: game.playerOrder.map((pUid) => ({
-          uid: pUid,
-          displayName: nameMap[pUid] || 'Player',
-          color: slotMap[pUid] ? SLOT_COLORS[slotMap[pUid]] : 'red',
-          tokensHome: countTokensHome(pUid, updatedTokens),
-        })),
-      };
-      transaction.set(historyRef, historyRecord);
-
-      const winEventRef = doc(collection(db, 'rooms', roomId, 'games', gameId, 'events'));
-      transaction.set(winEventRef, {
-        id: winEventRef.id,
-        gameId,
-        type: 'GAME_FINISHED' as GameEventType,
-        uid: user.uid,
-        slot: playerSlot,
-        timestamp: now,
-        messageEn: `🏆 ${nameMap[user.uid]} is the Champion!`,
-        messageBn: `🏆 ${nameMap[user.uid]} চ্যাম্পিয়ন হয়েছেন!`,
-      });
-
-      return;
-    }
-
-    // Determine next state: Extra Roll or Next Player
-    if (moveCalc.grantsExtraTurn) {
-      transaction.update(gameRef, {
-        tokens: updatedTokens,
-        diceValue: null,
-        diceRolled: false,
-        status: 'AWAITING_ROLL',
-        lastCapturedToken,
-        turnStartedAt: now,
-        turnExpiresAt: now + turnTimeout,
-        version: game.version + 1,
-        lastAction: 'EXTRA_TURN_GRANTED',
-        lastActionAt: now,
-        turnMessage: {
-          en: moveCalc.capturedTokens.length > 0
-            ? 'Captured token! Extra roll granted.'
-            : game.diceValue === 6
-            ? 'Rolled 6! Extra roll granted.'
-            : 'Token reached Home! Extra roll granted.',
-          bn: moveCalc.capturedTokens.length > 0
-            ? 'ঘুঁটি কেটে অতিরিক্ত চাল পেয়েছেন!'
-            : game.diceValue === 6
-            ? '৬ ফেলায় অতিরিক্ত চাল পেয়েছেন!'
-            : 'ঘুঁটি ঘরে ঢুকে অতিরিক্ত চাল পেয়েছেন!',
-          type: moveCalc.capturedTokens.length > 0 ? 'capture' : 'six',
-        },
-      });
-    } else {
-      const nextUid = getNextPlayerUid(game.playerOrder, user.uid, updatedTokens, tokensToWin);
-      transaction.update(gameRef, {
-        tokens: updatedTokens,
-        diceValue: null,
-        diceRolled: false,
-        consecutiveSixes: 0,
-        currentPlayerUid: nextUid,
-        turnNumber: game.turnNumber + 1,
-        status: 'AWAITING_ROLL',
-        lastCapturedToken,
-        turnStartedAt: now,
-        turnExpiresAt: now + turnTimeout,
-        version: game.version + 1,
-        lastAction: 'TURN_PASSED',
-        lastActionAt: now,
-        turnMessage: {
-          en: `Turn passed to ${nameMap[nextUid] || 'next player'}.`,
-          bn: `${nameMap[nextUid] || 'পরবর্তী খেলোয়াড়'}-এর চাল।`,
-          type: 'info',
-        },
-      });
-    }
-  });
-}
-
-/**
- * Handle Turn Timeout safely
- */
-export async function handleTurnTimeout(roomId: string, gameId: string): Promise<void> {
-  await runTransaction(db, async (transaction) => {
-    const gameRef = doc(db, 'rooms', roomId, 'games', gameId);
-    const gameSnap = await transaction.get(gameRef);
-    if (!gameSnap.exists()) return;
-
-    const game = gameSnap.data() as GameDocument;
-    if (game.status === 'GAME_OVER') return;
-
-    const now = Date.now();
-    if (now < game.turnExpiresAt) return; // not expired yet
-
-    const roomRef = doc(db, 'rooms', roomId);
-    const roomSnap = await transaction.get(roomRef);
-    const room = roomSnap.data() as RoomDocument;
-    const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
-    const tokensToWin = room.settings.tokensToWin || (room.settings.gameMode === 'RUSH' ? 2 : 4);
-
-    const nextUid = getNextPlayerUid(game.playerOrder, game.currentPlayerUid, game.tokens, tokensToWin);
-
-    transaction.update(gameRef, {
+  // Extra Turn vs Next Player
+  if (moveCalc.grantsExtraTurn) {
+    updatedGame = {
+      ...game,
+      tokens: updatedTokens,
+      diceValue: null,
+      diceRolled: false,
+      status: 'AWAITING_ROLL',
+      lastCapturedToken,
+      turnStartedAt: now,
+      turnExpiresAt: now + turnTimeout,
+      version: game.version + 1,
+      lastAction: 'EXTRA_TURN_GRANTED',
+      lastActionAt: now,
+      turnMessage: {
+        en: moveCalc.capturedTokens.length > 0
+          ? 'Captured token! Extra roll granted.'
+          : game.diceValue === 6
+          ? 'Rolled 6! Extra roll granted.'
+          : 'Token reached Home! Extra roll granted.',
+        bn: moveCalc.capturedTokens.length > 0
+          ? 'ঘুঁটি কেটে অতিরিক্ত চাল পেয়েছেন!'
+          : game.diceValue === 6
+          ? '৬ ফেলায় অতিরিক্ত চাল পেয়েছেন!'
+          : 'ঘুঁটি ঘরে ঢুকে অতিরিক্ত চাল পেয়েছেন!',
+        type: moveCalc.capturedTokens.length > 0 ? 'capture' : 'six',
+      },
+    };
+  } else {
+    const nextUid = getNextPlayerUid(game.playerOrder, user.uid, updatedTokens, tokensToWin);
+    updatedGame = {
+      ...game,
+      tokens: updatedTokens,
       diceValue: null,
       diceRolled: false,
       consecutiveSixes: 0,
       currentPlayerUid: nextUid,
       turnNumber: game.turnNumber + 1,
       status: 'AWAITING_ROLL',
+      lastCapturedToken,
       turnStartedAt: now,
       turnExpiresAt: now + turnTimeout,
       version: game.version + 1,
-      lastAction: 'TURN_TIMEOUT',
+      lastAction: 'TURN_PASSED',
       lastActionAt: now,
       turnMessage: {
-        en: 'Turn timed out! Passed to next player.',
-        bn: 'সময় শেষ! চাল পরবর্তী খেলোয়াড়কে দেওয়া হয়েছে।',
-        type: 'penalty',
+        en: `Turn passed to ${nameMap[nextUid] || 'next player'}.`,
+        bn: `${nameMap[nextUid] || 'পরবর্তী খেলোয়াড়'}-এর চাল।`,
+        type: 'info',
       },
-    });
-  });
+    };
+  }
+
+  if (cached) cached.game = updatedGame;
+  notifyGameSubscribers(roomId, updatedGame);
+  broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+  firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+
+  return { updatedGame };
 }
 
 /**
- * Start Rematch in same Room (Admin privilege)
+ * Handle Turn Timeout safely in 0ms
+ */
+export async function handleTurnTimeout(roomId: string, gameId: string): Promise<void> {
+  const cached = localStore.get(roomId);
+  const game = cached?.game;
+  if (!game || game.status === 'GAME_OVER') return;
+
+  const now = Date.now();
+  if (now < game.turnExpiresAt) return;
+
+  const room = cached?.room || { settings: DEFAULT_SETTINGS } as RoomDocument;
+  const turnTimeout = (room.settings.turnTimeoutSeconds || 30) * 1000;
+  const tokensToWin = room.settings.tokensToWin || (room.settings.gameMode === 'RUSH' ? 2 : 4);
+
+  const nextUid = getNextPlayerUid(game.playerOrder, game.currentPlayerUid, game.tokens, tokensToWin);
+
+  const nameMap: Record<string, string> = {};
+  if (cached?.players) {
+    Object.values(cached.players).forEach((p) => {
+      nameMap[p.uid] = p.displayName;
+    });
+  }
+
+  const updatedGame: GameDocument = {
+    ...game,
+    diceValue: null,
+    diceRolled: false,
+    consecutiveSixes: 0,
+    currentPlayerUid: nextUid,
+    turnNumber: game.turnNumber + 1,
+    status: 'AWAITING_ROLL',
+    turnStartedAt: now,
+    turnExpiresAt: now + turnTimeout,
+    version: game.version + 1,
+    lastAction: 'TURN_TIMEOUT',
+    lastActionAt: now,
+    turnMessage: {
+      en: 'Turn timed out! Passed to next player.',
+      bn: 'সময় শেষ! চাল পরবর্তী খেলোয়াড়কে দেওয়া হয়েছে।',
+      type: 'penalty',
+    },
+  };
+
+  if (cached) cached.game = updatedGame;
+  notifyGameSubscribers(roomId, updatedGame);
+  broadcastLocalUpdate('GAME_UPDATED', roomId, { game: updatedGame });
+  firestoreBackgroundSync(setDoc(doc(db, 'rooms', roomId, 'games', gameId), updatedGame));
+}
+
+/**
+ * Start Rematch in same Room (0ms)
  */
 export async function startRematch(roomId: string, adminUid: string): Promise<string> {
   return await startGame(roomId, adminUid);
 }
 
 /**
- * Leave Room
+ * Leave Room (0ms)
  */
 export async function leaveRoom(roomId: string, uid: string): Promise<void> {
-  const playerRef = doc(db, 'rooms', roomId, 'players', uid);
-  await updateDoc(playerRef, {
-    status: 'left',
-    connected: false,
-    ready: false,
-    lastSeenAt: Date.now(),
-  }).catch(() => {});
+  const cached = localStore.get(roomId);
+  if (cached && cached.players[uid]) {
+    cached.players[uid].status = 'left';
+    cached.players[uid].connected = false;
+    cached.players[uid].ready = false;
+    notifyPlayersSubscribers(roomId, cached.players);
+    broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
+  }
 
-  await updateDoc(doc(db, 'users', uid), {
-    activeRoomId: null,
-    lastSeenAt: Date.now(),
-  }).catch(() => {});
+  firestoreBackgroundSync(
+    Promise.all([
+      updateDoc(doc(db, 'rooms', roomId, 'players', uid), {
+        status: 'left',
+        connected: false,
+        ready: false,
+        lastSeenAt: Date.now(),
+      }).catch(() => {}),
+      updateDoc(doc(db, 'users', uid), {
+        activeRoomId: null,
+        lastSeenAt: Date.now(),
+      }).catch(() => {}),
+    ])
+  );
 }
 
 /**
- * Broadcast ephemeral Quick Reaction or Bangla Audio Taunt
+ * Update player customization (displayName, color) in 0ms
+ */
+export async function updatePlayerConfig(
+  roomId: string,
+  uid: string,
+  updates: { displayName?: string; color?: PlayerColor }
+): Promise<void> {
+  const cached = localStore.get(roomId);
+  if (cached && cached.players[uid]) {
+    if (updates.displayName) cached.players[uid].displayName = updates.displayName;
+    if (updates.color) cached.players[uid].color = updates.color;
+    cached.players[uid].lastSeenAt = Date.now();
+    notifyPlayersSubscribers(roomId, cached.players);
+    broadcastLocalUpdate('PLAYERS_UPDATED', roomId, { players: cached.players });
+  }
+
+  firestoreBackgroundSync(
+    updateDoc(doc(db, 'rooms', roomId, 'players', uid), {
+      ...updates,
+      lastSeenAt: Date.now(),
+    })
+  );
+}
+
+/**
+ * Update room settings in 0ms
+ */
+export async function updateRoomSettings(
+  roomId: string,
+  settings: Partial<RoomSettings>
+): Promise<void> {
+  const cached = localStore.get(roomId);
+  if (cached) {
+    cached.room.settings = { ...cached.room.settings, ...settings };
+    cached.room.updatedAt = Date.now();
+    notifyRoomSubscribers(roomId, cached.room);
+    broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: cached.room });
+  }
+
+  firestoreBackgroundSync(
+    updateDoc(doc(db, 'rooms', roomId), {
+      settings,
+      updatedAt: Date.now(),
+    })
+  );
+}
+
+/**
+ * Send Reaction (0ms)
  */
 export async function sendReaction(
   roomId: string,
@@ -952,5 +1440,5 @@ export async function sendReaction(
     tauntTextEn: taunt?.textEn,
     timestamp: Date.now(),
   };
-  await setDoc(reactionRef, reaction);
+  firestoreBackgroundSync(setDoc(reactionRef, reaction));
 }
