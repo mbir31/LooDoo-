@@ -293,8 +293,8 @@ export async function createRoom(
   customSettings?: Partial<RoomSettings>
 ): Promise<{ roomId: string; roomCode: string; roomData: RoomDocument; p1Player: RoomPlayer }> {
   const roomCode = generateRoomCode();
-  const roomRef = doc(collection(db, 'rooms'));
-  const roomId = roomRef.id;
+  const roomId = roomCode;
+  const roomRef = doc(db, 'rooms', roomId);
 
   const settings: RoomSettings = {
     ...DEFAULT_SETTINGS,
@@ -341,7 +341,7 @@ export async function createRoom(
   notifyPlayersSubscribers(roomId, { [user.uid]: p1Player });
   broadcastLocalUpdate('ROOM_UPDATED', roomId, { room: roomData, players: { [user.uid]: p1Player } });
 
-  // 2. Immediate Firestore sync with robust fallback
+  // 2. Immediate Firestore sync with robust write
   const playerRef = doc(db, 'rooms', roomId, 'players', user.uid);
   try {
     await Promise.all([
@@ -374,8 +374,8 @@ export async function createSoloRoom(
   gameData: GameDocument;
 }> {
   const roomCode = generateRoomCode();
-  const roomRef = doc(collection(db, 'rooms'));
-  const roomId = roomRef.id;
+  const roomId = roomCode;
+  const roomRef = doc(db, 'rooms', roomId);
   const maxPlayers = (botCount === 1 ? 2 : 4) as 2 | 4;
 
   const settings: RoomSettings = {
@@ -534,20 +534,47 @@ export async function joinRoom(
   }
 
   let roomId = foundRoomId || cleanCode;
-  let roomDoc = null;
+  let roomDoc: any = null;
 
   if (!cachedEntry) {
-    // Query Firestore
-    roomDoc = await getDoc(doc(db, 'rooms', roomId)).catch(() => null);
-    if (!roomDoc || !roomDoc.exists()) {
-      const q = query(collection(db, 'rooms'), where('roomCode', '==', cleanCode), limit(1));
-      const snap = await getDocs(q).catch(() => null);
-      if (snap && !snap.empty) {
-        roomDoc = snap.docs[0];
-        roomId = roomDoc.id;
-      } else {
-        throw new Error('errorRoomNotFound');
+    // 2. Direct document lookup (Instant O(1) by 6-digit room code)
+    try {
+      const directSnap = await getDoc(doc(db, 'rooms', cleanCode));
+      if (directSnap.exists()) {
+        roomDoc = directSnap;
+        roomId = directSnap.id;
       }
+    } catch (e: any) {
+      console.warn('Direct room lookup notice:', e?.message || e);
+    }
+
+    // 3. Fallback direct lookup with calculated roomId
+    if (!roomDoc || !roomDoc.exists()) {
+      try {
+        const idSnap = await getDoc(doc(db, 'rooms', roomId));
+        if (idSnap.exists()) {
+          roomDoc = idSnap;
+          roomId = idSnap.id;
+        }
+      } catch (e: any) {}
+    }
+
+    // 4. Fallback query by roomCode field
+    if (!roomDoc || !roomDoc.exists()) {
+      try {
+        const q = query(collection(db, 'rooms'), where('roomCode', '==', cleanCode), limit(1));
+        const snap = await getDocs(q);
+        if (snap && !snap.empty) {
+          roomDoc = snap.docs[0];
+          roomId = roomDoc.id;
+        }
+      } catch (e: any) {
+        console.warn('Room query lookup notice:', e?.message || e);
+      }
+    }
+
+    if (!roomDoc || !roomDoc.exists()) {
+      throw new Error('errorRoomNotFound');
     }
   }
 
@@ -560,9 +587,13 @@ export async function joinRoom(
   if (cachedEntry) {
     existingPlayers = Object.values(cachedEntry.players);
   } else {
-    const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players')).catch(() => null);
-    if (playersSnap && !playersSnap.empty) {
-      existingPlayers = playersSnap.docs.map((d) => d.data() as RoomPlayer);
+    try {
+      const playersSnap = await getDocs(collection(db, 'rooms', roomId, 'players'));
+      if (playersSnap && !playersSnap.empty) {
+        existingPlayers = playersSnap.docs.map((d) => d.data() as RoomPlayer);
+      }
+    } catch (e: any) {
+      console.warn('Players fetch notice:', e?.message || e);
     }
   }
 

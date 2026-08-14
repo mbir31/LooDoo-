@@ -150,6 +150,13 @@ export default function App() {
           } else if (profile.activeRoomId) {
             setCurrentRoomId(profile.activeRoomId);
           }
+        } else {
+          // Initialize automatic anonymous authentication for seamless multi-device Firestore sync
+          try {
+            await loginAsGuest();
+          } catch (e) {
+            console.debug('Guest anonymous auth notice:', e);
+          }
         }
       } catch (err: any) {
         console.warn('Auth state sync notice:', err?.message || err);
