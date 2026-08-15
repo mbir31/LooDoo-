@@ -106,7 +106,7 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
 - **Interactive Offline Detection & In-Place 'Reconnect Now'**: Live network monitoring with a dedicated 'Reconnect Now' button that manually re-enables Firestore network channels (`enableNetwork`) and re-initializes room, player roster, and board state without forcing a full page reload or losing active view states.
 - **Persistent Seamless Firebase Authentication**: Configured with browser local persistence (`browserLocalPersistence`) and automatic session recovery, guaranteeing permanent multi-session connectivity without developer-side approvals or auth expiration prompts.
 - **Direct 6-Digit Room Resolution**: Instant O(1) cross-device room lookup directly via Firestore document identifiers and multi-tier query fallbacks.
-- **Instant 6-Digit Room Codes**: Create private rooms and invite friends via WhatsApp with 1 tap.
+- **Instant 6-Digit Room Codes & 1-Tap Invite**: Create private rooms and invite friends via WhatsApp / messaging apps with 1 tap with the custom Bengali invitation message (`লুডো খেলবো, খেলতে চাইলে ক্লিক করো লিংকে -`) and instant deep-join links.
 - **Cross-Device Reliability**: Automatic anonymous authentication ensures players on any mobile or desktop browser immediately sync with host rooms without login friction.
 - **State Integrity & Race Condition Safeguard**: Robust multi-tier optimistic client updates backed by version-checked atomic Firestore state transactions.
 - **Sub-50ms Real-Time Sync**: Synchronized turn management powered by Firebase Firestore snapshots.

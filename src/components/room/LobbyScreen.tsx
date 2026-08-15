@@ -79,7 +79,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       try {
         await navigator.share({
           title: 'Join LooDoo : লুডু Room',
-          text: `Join my Bangladeshi Ludo game! Room code: ${room.roomCode}`,
+          text: 'লুডো খেলবো, খেলতে চাইলে ক্লিক করো লিংকে -',
           url: joinUrl,
         });
         return;
