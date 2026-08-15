@@ -73,6 +73,66 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
 
 ---
 
+## 📸 Application Screenshots & Visual Showcase (অ্যাপের বাস্তব ইন্টারফেস)
+
+Explore the authentic visual craftsmanship, Bengali typography, traditional Bangladeshi boards, and real-time multiplayer interfaces of **LooDoo**:
+
+### 🏠 ১. মেইন লবি ও গেম হাব (Main Lobby & Game Hub)
+Home screen with 1-tap room creation, direct room joining, offline Pass & Play, AI duel mode, sound toggles, and live profile preview.
+
+![LooDoo Main Lobby & Game Hub](Screenshot_20260815_135510_Chrome.png)
+
+---
+
+### ⚙️ ২. রুম তৈরি ও ম্যাচ কনফিগারেশন (Room Creation & Match Setup)
+Create customized private multiplayer rooms with 4 distinct game modes (*Classic, Rush, Snake-Ludo, 2v2 Tag-Team*), flexible player slots (2, 3, or 4 players), and adjustable turn timers (20s, 30s, 45s).
+
+![Create Room & Match Configuration](Screenshot_20260815_135526_Chrome.png)
+
+---
+
+### 🎨 ৩. প্রোফাইল ও ঘুঁটির স্কিন কাস্টমাইজেশন (Profile & 3D Token Skins)
+Personalize your avatar with dynamic emojis and choose from 5 premium handcrafted token skins: *রয়েল ক্লাসিক (Glossy 3D Gold)*, *কাঠের কারুকাজ (Handcrafted Antique)*, *পিতলের মেটাল (Polished Metal)*, *সাইবার নিওন (Futuristic Glow)*, and *সাদা মার্বেল (Premium Stone)*.
+
+![Profile & 3D Token Skins Customizer](Screenshot_20260815_135538_Chrome.png)
+
+---
+
+### 👥 ৪. এক ফোনে ৪ জন — অফলাইন মোড (Offline Pass & Play Setup)
+Pass one phone around the table with zero internet required. Customize custom nicknames and avatar emojis for all 4 players in the same room.
+
+![Offline Pass & Play Setup](Screenshot_20260815_135600_Chrome.png)
+
+---
+
+### 🐍 ৫. ঐতিহ্যবাহী বাংলাদেশি সাপ লুডু বোর্ড (Authentic Bangladeshi Snake & Ladder)
+100-cell nostalgic board featuring indigenous Bangladeshi snake species (*কালনাগিনী, গোখরো, চন্দ্রবোড়া, অজগর*), rustic bamboo & teak ladders, dual Bengali-English numerals, active turn clock, 3D dice, and live WebRTC voice chat.
+
+![Authentic Bangladeshi Snake & Ladder Board](Screenshot_20260815_135617_Chrome.png)
+
+---
+
+### 🎲 ৬. লাইভ ১৫x১৫ ক্লাসিক লুডু ম্যাচ (Live 15x15 Ludo Match)
+Full 15x15 board with color-themed quadrants, remapped start ways, engraved player names inside yards, star safe zones, 3D physics dice, and live turn timers.
+
+![Live 15x15 Classic Ludo Match](Screenshot_20260815_135631_Chrome.png)
+
+---
+
+### 📜 ৭. ঐতিহ্যবাহী বাংলাদেশি লুডুর নিয়মাবলী (Traditional Ludo Rules Guide)
+Complete in-game guide covering authentic Bangladeshi household rules: 6-out yard rule, consecutive 3-six penalty, token capture bonus turns, star safe sanctuaries, and exact home rolls.
+
+![Traditional Ludo Rules Guide](Screenshot_20260815_135645_Chrome.png)
+
+---
+
+### 🏆 ৮. অর্জন ও ট্রফি সংগ্রহশালা (Achievements & Trophies Showcase)
+Track career match stats, wins, sixes, token captures, player XP level, and unlock 6 exclusive achievements: *ছক্কার রাজা*, *ক্যাপচার ওস্তাদ*, *অপরাজিত নায়ক*, *বিদ্যুৎ গতি*, *সর্পজয়ী সম্রাট*, and *টিম লিজেন্ড*.
+
+![Achievements & Trophies Showcase](Screenshot_20260815_135659_Chrome.png)
+
+---
+
 ## 🎮 Complete Feature Arsenal
 
 ### 🎲 Gameplay & Board Mechanics
