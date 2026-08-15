@@ -19,6 +19,17 @@
 
 </div>
 
+## 📑 Table of Contents (সুচিপত্র)
+- [📸 Visual Showcase & Screenshots](#-application-screenshots--visual-showcase-অ্যাপের-বাস্তব-ইন্টারফেস)
+- [🌟 What is LooDoo?](#-what-is-loodoo-লুডু)
+- [⚡ Why LooDoo is 10x Better](#-why-loodoo-is-10x-better-than-heavy-store-apps)
+- [🇧🇩 প্রধান বৈশিষ্ট্যসমূহ (Highlights)](#-প্রধান-বৈশিষ্ট্যসমূহ-bangla-feature-highlights)
+- [🎮 Complete Feature Arsenal](#-complete-feature-arsenal)
+- [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
+- [🚀 Quick Start & Installation](#-quick-start--installation)
+
+---
+
 ## 🌟 What is LooDoo (লুডু)?
 
 **LooDoo** is a cutting-edge, ultra-lightweight **Progressive Web Application (PWA)** engineered for friends and family across Bangladesh and the global diaspora. Unlike bloated native mobile games filled with unskippable ads and heavy 150MB+ downloads, **LooDoo runs instantly inside any browser with 0MB permanent storage cost**, works smoothly on weak mobile networks, and offers rich offline support.
