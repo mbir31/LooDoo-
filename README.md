@@ -84,7 +84,12 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
   - **Interactive Tile Inspector & 3 Board Styles**: Real-time tile details tooltip on tap/hover, plus a 1-tap style switcher (*ঐতিহ্যবাহী ভিন্টেজ*, *পোড়ামাটি*, *উৎসবমুখর রাজকীয়*).
   - **Dynamic Bengali Commentary & Audio**: Dedicated snake hiss/slide (`snakeBite`) and ladder climb arpeggio (`ladderClimb`) sound synthesis with celebratory Bangla toasts.
 - **Engraved Yard Player Names**: Every yard features the assigned player's name and emoji avatar engraved directly into the inner white space in that yard's matching theme color (Emerald for Green, Amber for Yellow, Crimson for Red, Royal Blue for Blue), visible to all participants in real time with active turn highlights.
-- **Accurate Quadrant Way Alignment**: Redesigned 15x15 board geometry with each player's colored start paths, star safe sanctuaries, and home columns properly connected to the right of their respective yards.
+- **Remapped Quadrant Start Ways & Track Alignment**: Updated 15x15 board geometry with each player's colored start paths remapped to the opposite side of their respective yards:
+  - **Red (P1, Bottom-Left Yard)**: Start moved to Bottom Arm left lane (`[13, 6]`), entering Red Home Path on Bottom Arm (`[13..9, 7]`) leading to the Bottom Home Triangle.
+  - **Green (P2, Top-Left Yard)**: Start moved to Left Arm top lane (`[6, 1]`), entering Green Home Path on Left Arm (`[7, 1..5]`) leading to the Left Home Triangle.
+  - **Yellow (P3, Top-Right Yard)**: Start moved to Top Arm right lane (`[1, 8]`), entering Yellow Home Path on Top Arm (`[1..5, 7]`) leading to the Top Home Triangle.
+  - **Blue (P4, Bottom-Right Yard)**: Start moved to Right Arm bottom lane (`[8, 13]`), entering Blue Home Path on Right Arm (`[7, 13..9]`) leading to the Right Home Triangle.
+  - **Star Safe Sanctuaries**: Remapped to `[8, 2]` (Left Arm), `[2, 6]` (Top Arm), `[6, 12]` (Right Arm), and `[12, 8]` (Bottom Arm) ensuring perfect 8-step intervals and full movement consistency.
 - **Movable Token Visual Highlight Animation**: Active player's legal pieces feature dual-wave harmonic beacon pulses, hover diamonds, bouncing spring translations, and prominent high-contrast glowing auras.
 - **Dynamic Turn Indicator Transitions**: Spring-animated turn switches with color-themed auras, active player pulses, and real-time roll alerts.
 - **Bangladeshi 3-Six Rule (তিন ছক্কায় দান বাতিল)**: Authentic local rule engine that cancels the turn if a player rolls three 6s consecutively.

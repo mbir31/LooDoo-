@@ -14,24 +14,24 @@ export const FINAL_HOME_PROGRESS = 56;
 
 // Starting global track indices for each player slot
 export const SLOT_START_TRACK_INDEX: Record<PlayerSlot, number> = {
-  P1: 0,  // Red (bottom-left / left)
-  P2: 13, // Green (top-left / top)
-  P3: 26, // Yellow (top-right / right)
-  P4: 39, // Blue (bottom-right / bottom)
+  P1: 0,  // Red (bottom arm left lane [13, 6] connected to bottom-left Red yard)
+  P2: 13, // Green (left arm top lane [6, 1] connected to top-left Green yard)
+  P3: 26, // Yellow (top arm right lane [1, 8] connected to top-right Yellow yard)
+  P4: 39, // Blue (right arm bottom lane [8, 13] connected to bottom-right Blue yard)
 };
 
 // Safe squares on the 52-cell track:
-// 4 starting squares (0: Red [8,1], 13: Green [1,6], 26: Yellow [6,13], 39: Blue [13,8])
-// + 4 star squares (5: [6,2], 18: [2,8], 31: [8,12], 44: [12,6])
+// 4 starting squares (0: Red [13,6], 13: Green [6,1], 26: Yellow [1,8], 39: Blue [8,13])
+// + 4 star squares (8: [8,2], 21: [2,6], 34: [6,12], 47: [12,8])
 export const SAFE_TRACK_INDICES = new Set<number>([
-  0,  // P1 Start (Red at [8, 1])
-  5,  // Star 1 (Left arm top lane [6, 2])
-  13, // P2 Start (Green at [1, 6])
-  18, // Star 2 (Top arm right lane [2, 8])
-  26, // P3 Start (Yellow at [6, 13])
-  31, // Star 3 (Right arm bottom lane [8, 12])
-  39, // P4 Start (Blue at [13, 8])
-  44, // Star 4 (Bottom arm left lane [12, 6])
+  0,  // P1 Start (Red at [13, 6])
+  8,  // Star 1 (Left arm bottom lane [8, 2])
+  13, // P2 Start (Green at [6, 1])
+  21, // Star 2 (Top arm left lane [2, 6])
+  26, // P3 Start (Yellow at [1, 8])
+  34, // Star 3 (Right arm top lane [6, 12])
+  39, // P4 Start (Blue at [8, 13])
+  47, // Star 4 (Bottom arm right lane [12, 8])
 ]);
 
 export function isSafeTrackIndex(trackIndex: number): boolean {
@@ -390,75 +390,75 @@ export function getProjectedLandingInfo(
  */
 
 // 52 Common Track Cells Coordinates [row, col] on 15x15 grid
-// Clockwise starting from Red Start (row 8, col 1):
+// Clockwise starting from Red Start on Bottom Arm (row 13, col 6):
 export const TRACK_GRID_COORDINATES: [number, number][] = [
-  [8, 1],  // 0: P1 Start (Red) - SAFE
-  [8, 0],  // 1
-  [7, 0],  // 2 (Left Middle)
-  [6, 0],  // 3
-  [6, 1],  // 4
-  [6, 2],  // 5: SAFE (Star 1)
-  [6, 3],  // 6
-  [6, 4],  // 7
-  [6, 5],  // 8
-  [5, 6],  // 9 (Turns Up into Top Arm)
-  [4, 6],  // 10
-  [3, 6],  // 11
-  [2, 6],  // 12
-  [1, 6],  // 13: P2 Start (Green) - SAFE
-  [0, 6],  // 14
-  [0, 7],  // 15 (Top Middle)
-  [0, 8],  // 16
-  [1, 8],  // 17
-  [2, 8],  // 18: SAFE (Star 2)
-  [3, 8],  // 19
-  [4, 8],  // 20
-  [5, 8],  // 21
-  [6, 9],  // 22 (Turns Right into Right Arm)
-  [6, 10], // 23
-  [6, 11], // 24
-  [6, 12], // 25
-  [6, 13], // 26: P3 Start (Yellow) - SAFE
-  [6, 14], // 27
-  [7, 14], // 28 (Right Middle)
-  [8, 14], // 29
-  [8, 13], // 30
-  [8, 12], // 31: SAFE (Star 3)
-  [8, 11], // 32
-  [8, 10], // 33
-  [8, 9],  // 34
-  [9, 8],  // 35 (Turns Down into Bottom Arm)
-  [10, 8], // 36
-  [11, 8], // 37
-  [12, 8], // 38
-  [13, 8], // 39: P4 Start (Blue) - SAFE
-  [14, 8], // 40
-  [14, 7], // 41 (Bottom Middle)
-  [14, 6], // 42
-  [13, 6], // 43
-  [12, 6], // 44: SAFE (Star 4)
-  [11, 6], // 45
-  [10, 6], // 46
-  [9, 6],  // 47
-  [8, 5],  // 48 (Turns Left into Left Arm)
-  [8, 4],  // 49
-  [8, 3],  // 50
-  [8, 2],  // 51
+  [13, 6], // 0: P1 Start (Red - Bottom Arm left lane) - SAFE
+  [12, 6], // 1
+  [11, 6], // 2
+  [10, 6], // 3
+  [9, 6],  // 4
+  [8, 5],  // 5 (Turns Left into Left Arm bottom lane)
+  [8, 4],  // 6
+  [8, 3],  // 7
+  [8, 2],  // 8: SAFE (Star 1 - Left Arm)
+  [8, 1],  // 9
+  [8, 0],  // 10
+  [7, 0],  // 11 (Left Middle)
+  [6, 0],  // 12
+  [6, 1],  // 13: P2 Start (Green - Left Arm top lane) - SAFE
+  [6, 2],  // 14
+  [6, 3],  // 15
+  [6, 4],  // 16
+  [6, 5],  // 17
+  [5, 6],  // 18 (Turns Up into Top Arm left lane)
+  [4, 6],  // 19
+  [3, 6],  // 20
+  [2, 6],  // 21: SAFE (Star 2 - Top Arm)
+  [1, 6],  // 22
+  [0, 6],  // 23
+  [0, 7],  // 24 (Top Middle)
+  [0, 8],  // 25
+  [1, 8],  // 26: P3 Start (Yellow - Top Arm right lane) - SAFE
+  [2, 8],  // 27
+  [3, 8],  // 28
+  [4, 8],  // 29
+  [5, 8],  // 30
+  [6, 9],  // 31 (Turns Right into Right Arm top lane)
+  [6, 10], // 32
+  [6, 11], // 33
+  [6, 12], // 34: SAFE (Star 3 - Right Arm)
+  [6, 13], // 35
+  [6, 14], // 36
+  [7, 14], // 37 (Right Middle)
+  [8, 14], // 38
+  [8, 13], // 39: P4 Start (Blue - Right Arm bottom lane) - SAFE
+  [8, 12], // 40
+  [8, 11], // 41
+  [8, 10], // 42
+  [8, 9],  // 43
+  [9, 8],  // 44 (Turns Down into Bottom Arm right lane)
+  [10, 8], // 45
+  [11, 8], // 46
+  [12, 8], // 47: SAFE (Star 4 - Bottom Arm)
+  [13, 8], // 48
+  [14, 8], // 49
+  [14, 7], // 50 (Bottom Middle)
+  [14, 6], // 51
 ];
 
 // Home Path 5 cells for each slot (progress 51..55)
 export const HOME_PATHS_GRID_COORDINATES: Record<PlayerSlot, [number, number][]> = {
-  P1: [ // Red (row 7, cols 1..5)
+  P1: [ // Red (Bottom Arm col 7, rows 13..9 leading into center bottom)
+    [13, 7], [12, 7], [11, 7], [10, 7], [9, 7]
+  ],
+  P2: [ // Green (Left Arm row 7, cols 1..5 leading into center left)
     [7, 1], [7, 2], [7, 3], [7, 4], [7, 5]
   ],
-  P2: [ // Green (col 7, rows 1..5)
+  P3: [ // Yellow (Top Arm col 7, rows 1..5 leading into center top)
     [1, 7], [2, 7], [3, 7], [4, 7], [5, 7]
   ],
-  P3: [ // Yellow (row 7, cols 13..9)
+  P4: [ // Blue (Right Arm row 7, cols 13..9 leading into center right)
     [7, 13], [7, 12], [7, 11], [7, 10], [7, 9]
-  ],
-  P4: [ // Blue (col 7, rows 13..9)
-    [13, 7], [12, 7], [11, 7], [10, 7], [9, 7]
   ]
 };
 

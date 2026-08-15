@@ -298,20 +298,20 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
 
     if (r >= 6 && r <= 8 && c >= 6 && c <= 8) return 'center_home';
 
-    if (r === 7 && c >= 1 && c <= 5) return 'home_path_red';
-    if (c === 7 && r >= 1 && r <= 5) return 'home_path_green';
-    if (r === 7 && c >= 9 && c <= 13) return 'home_path_yellow';
-    if (c === 7 && r >= 9 && r <= 13) return 'home_path_blue';
+    if (r === 7 && c >= 1 && c <= 5) return 'home_path_green';
+    if (c === 7 && r >= 1 && r <= 5) return 'home_path_yellow';
+    if (r === 7 && c >= 9 && c <= 13) return 'home_path_blue';
+    if (c === 7 && r >= 9 && r <= 13) return 'home_path_red';
 
-    if (r === 8 && c === 1) return 'start_red';
-    if (r === 1 && c === 6) return 'start_green';
-    if (r === 6 && c === 13) return 'start_yellow';
-    if (r === 13 && c === 8) return 'start_blue';
+    if (r === 13 && c === 6) return 'start_red';
+    if (r === 6 && c === 1) return 'start_green';
+    if (r === 1 && c === 8) return 'start_yellow';
+    if (r === 8 && c === 13) return 'start_blue';
 
-    if (r === 6 && c === 2) return 'star';
-    if (r === 2 && c === 8) return 'star';
-    if (r === 8 && c === 12) return 'star';
-    if (r === 12 && c === 6) return 'star';
+    if (r === 8 && c === 2) return 'star';
+    if (r === 2 && c === 6) return 'star';
+    if (r === 6 && c === 12) return 'star';
+    if (r === 12 && c === 8) return 'star';
 
     return 'track_normal';
   };
@@ -541,14 +541,14 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
                 <stop offset="100%" stopColor="#b91c1c" />
               </linearGradient>
             </defs>
-            {/* Top Green Triangle */}
-            <polygon points="0,0 100,0 50,50" fill="url(#grad-green)" stroke="#065f46" strokeWidth="1.5" />
-            {/* Right Yellow Triangle */}
-            <polygon points="100,0 100,100 50,50" fill="url(#grad-yellow)" stroke="#b45309" strokeWidth="1.5" />
-            {/* Bottom Blue Triangle */}
-            <polygon points="0,100 100,100 50,50" fill="url(#grad-blue)" stroke="#1e40af" strokeWidth="1.5" />
-            {/* Left Red Triangle */}
-            <polygon points="0,0 0,100 50,50" fill="url(#grad-red)" stroke="#991b1b" strokeWidth="1.5" />
+            {/* Top Yellow Triangle */}
+            <polygon points="0,0 100,0 50,50" fill="url(#grad-yellow)" stroke="#b45309" strokeWidth="1.5" />
+            {/* Right Blue Triangle */}
+            <polygon points="100,0 100,100 50,50" fill="url(#grad-blue)" stroke="#1e40af" strokeWidth="1.5" />
+            {/* Bottom Red Triangle */}
+            <polygon points="0,100 100,100 50,50" fill="url(#grad-red)" stroke="#991b1b" strokeWidth="1.5" />
+            {/* Left Green Triangle */}
+            <polygon points="0,0 0,100 50,50" fill="url(#grad-green)" stroke="#065f46" strokeWidth="1.5" />
           </svg>
 
           {/* 3D Golden Medallion Trophy in Center */}
@@ -593,13 +593,13 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
               cellClass += 'bg-gradient-to-br from-sky-400 to-blue-600 text-white font-bold border-blue-700';
               cellContent = <Star className="w-3 h-3 sm:w-4 sm:h-4 fill-white text-white drop-shadow-md" />;
             } else if (cellType === 'home_path_red') {
-              cellClass += 'bg-gradient-to-r from-red-500 to-red-600 border-red-600 shadow-inner';
+              cellClass += 'bg-gradient-to-t from-red-500 to-rose-600 border-red-600 shadow-inner';
             } else if (cellType === 'home_path_green') {
-              cellClass += 'bg-gradient-to-b from-emerald-500 to-emerald-600 border-emerald-600 shadow-inner';
+              cellClass += 'bg-gradient-to-r from-emerald-500 to-teal-600 border-emerald-600 shadow-inner';
             } else if (cellType === 'home_path_yellow') {
-              cellClass += 'bg-gradient-to-l from-amber-400 to-yellow-500 border-amber-500 shadow-inner';
+              cellClass += 'bg-gradient-to-b from-amber-400 to-yellow-500 border-amber-500 shadow-inner';
             } else if (cellType === 'home_path_blue') {
-              cellClass += 'bg-gradient-to-t from-blue-500 to-indigo-600 border-blue-600 shadow-inner';
+              cellClass += 'bg-gradient-to-l from-blue-500 to-indigo-600 border-blue-600 shadow-inner';
             } else if (cellType === 'star') {
               cellClass += 'bg-gradient-to-b from-white to-amber-50/80';
               cellContent = (
@@ -612,17 +612,17 @@ export const LudoBoard: React.FC<LudoBoardProps> = ({
             }
 
             if (r === 7 && c === 0) {
-              cellClass += ' bg-rose-50';
-              cellContent = <span className="text-[11px] sm:text-xs font-black text-red-600 drop-shadow-sm">➔</span>;
-            } else if (r === 0 && c === 7) {
               cellClass += ' bg-emerald-50';
-              cellContent = <span className="text-[11px] sm:text-xs font-black text-emerald-600 drop-shadow-sm">⬇</span>;
-            } else if (r === 7 && c === 14) {
+              cellContent = <span className="text-[11px] sm:text-xs font-black text-emerald-600 drop-shadow-sm">➔</span>;
+            } else if (r === 0 && c === 7) {
               cellClass += ' bg-amber-50';
-              cellContent = <span className="text-[11px] sm:text-xs font-black text-amber-600 drop-shadow-sm">⬅</span>;
-            } else if (r === 14 && c === 7) {
+              cellContent = <span className="text-[11px] sm:text-xs font-black text-amber-600 drop-shadow-sm">⬇</span>;
+            } else if (r === 7 && c === 14) {
               cellClass += ' bg-blue-50';
-              cellContent = <span className="text-[11px] sm:text-xs font-black text-blue-600 drop-shadow-sm">⬆</span>;
+              cellContent = <span className="text-[11px] sm:text-xs font-black text-blue-600 drop-shadow-sm">⬅</span>;
+            } else if (r === 14 && c === 7) {
+              cellClass += ' bg-rose-50';
+              cellContent = <span className="text-[11px] sm:text-xs font-black text-red-600 drop-shadow-sm">⬆</span>;
             }
 
             return (
