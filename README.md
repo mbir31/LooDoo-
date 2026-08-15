@@ -76,6 +76,13 @@ Whether you want to create a private 6-digit room to voice chat with friends abr
 ## 🎮 Complete Feature Arsenal
 
 ### 🎲 Gameplay & Board Mechanics
+- **Authentic Bangladeshi Style Snake & Ladder Board (ঐতিহ্যবাহী বাংলাদেশি সাপ লুডু)**: Complete cultural visual and mechanical redesign featuring:
+  - **Handcrafted Serpentine Snakes**: Illustrated SVG snake curves with Cobra hoods (ফণা তোলা গোখরো), glowing yellow/ruby eyes, white fangs, and flicking red tongues modeled after indigenous Bangladeshi snake species: *কালনাগিনী* (98➔79), *পদ্মগোখরো* (95➔75), *হলুদ শঙ্খিনী* (93➔73), *সুন্দরবনের মহা অজগর* (87➔36), *চন্দ্রবোড়া / রাসেল ভাইপার* (62➔19), *নদীর ঢোঁড়া সাপ* (54➔34), *গ্রাম্য দাঁড়াশ সাপ* (17➔7), and *সবুজ ঘাস সাপ* (64➔60).
+  - **Traditional Bamboo & Teak Ladders (বাঁশের ও কাঠের মই)**: Parallel woodgrain rails, realistic wooden rungs (ধাপ), brass fastener rivets, and cast drop shadows representing authentic village bamboo and teak ladders: *গ্রাম্য বাঁশের মই* (4➔14), *পাকা সেগুন কাঠের মই* (9➔31), *পল্লী মজবুত মই* (21➔42), *আকাশ ছোঁয়া মহা মই* (28➔84 - +৫৬ ঘর বিশাল লাফ), *পদ্মা সেতু মই* (51➔67), *বিজয়ের সোনার মই* (72➔91), and *চূড়ান্ত রাজকীয় মই* (80➔99).
+  - **Dual Bengali & English Numerals (১..১০০)**: Large high-contrast Bengali digits (`১, ২, ... ১০০`) with subtle English corner coordinates.
+  - **Carved Teak & Terracotta Frame**: Traditional brass corner filigree brackets (পিতলের কোনা বন্ধনী), Nakshi Kantha patterned canvas overlays, celebratory start arch (`শুরু / START` at #1), and royal golden crown finish (`বিজয় / HOME` at #100).
+  - **Interactive Tile Inspector & 3 Board Styles**: Real-time tile details tooltip on tap/hover, plus a 1-tap style switcher (*ঐতিহ্যবাহী ভিন্টেজ*, *পোড়ামাটি*, *উৎসবমুখর রাজকীয়*).
+  - **Dynamic Bengali Commentary & Audio**: Dedicated snake hiss/slide (`snakeBite`) and ladder climb arpeggio (`ladderClimb`) sound synthesis with celebratory Bangla toasts.
 - **Engraved Yard Player Names**: Every yard features the assigned player's name and emoji avatar engraved directly into the inner white space in that yard's matching theme color (Emerald for Green, Amber for Yellow, Crimson for Red, Royal Blue for Blue), visible to all participants in real time with active turn highlights.
 - **Accurate Quadrant Way Alignment**: Redesigned 15x15 board geometry with each player's colored start paths, star safe sanctuaries, and home columns properly connected to the right of their respective yards.
 - **Movable Token Visual Highlight Animation**: Active player's legal pieces feature dual-wave harmonic beacon pulses, hover diamonds, bouncing spring translations, and prominent high-contrast glowing auras.
