@@ -1,302 +1,168 @@
-<div align="center">
+`🎲 LooDoo :` লু�ডু� `🎲🎲` বাং��লু�দে�দে�র লু�ডু� `,` এবাং�রআপনা�রবাংন্ধু�দে�রসা�দে� `—` যে�খা�দেনাই��কু�না `! LooDoo is a Bangladeshi-inspired multiplayer Ludo experience built for the way we actually play Ludo in Bangladesh.` বাংন্ধু�দে�রসা�দে�আড্ডা� `,` পরিরবাং�দেররসা�দে�একুযে��দেনাযেখালু� `,` ��দের��কু�বাংন্ধু�দে�রসা�দে�অনালু�ইনাম্যা��চ `,` অ�বাং�একু� `AI-` এররিবাংরুদে! লুড়া�ই `— LooDoo brings the familiar Bangladeshi Ludo experience into a modern, fun and beautifully designed game.` ছক্কা�র যেখালু� `,` বাংন্ধু�রযেম্যালু� `! 🎲🎲 A Ludo experience made with Bangladesh in mind.` 
 
-# 🎲 LooDoo : লুডু 🇧🇩
-### **The Next-Generation Progressive Web App (PWA) Multiplayer Ludo Game**
-*Built with love, for Friends & Family (FnF), by **©munabbirMushran***
+🎮 `PLAY LooDoo NOW` 👉👈 `PLAY ONLINE 🎲 No complicated registration • No app-store download required • Open & Play ________________` 
 
-[![Vercel Deployment](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://loodoo.vercel.app)
-[![PWA Ready](https://img.shields.io/badge/PWA-Installable%20(0MB)-emerald?style=for-the-badge&logo=pwa)](https://loodoo.vercel.app)
-[![Firebase Powered](https://img.shields.io/badge/Realtime-Firebase%20Firestore-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
-[![WebRTC Voice](https://img.shields.io/badge/Voice%20Chat-WebRTC%20P2P-blue?style=for-the-badge&logo=webrtc)](https://webrtc.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+❤️� `Why LooDoo?` কু�রণ এটা�শুধু�আদেরকুটা� `Ludo game` নায় `! Most Ludo games give you a generic board and generic gameplay. LooDoo tries to capture the feeling of the Ludo we grew up playing.` বাং��লু�দে�রি�ঘদের�য়�লু�ডু�রপরিররিচতরিনায়ম্যা `,` বাং��লু�ভা�ষা�রম্যাজা�র `commentary,` একুযে��দেনাবাংন্ধু�দে�রসা�দে�যেখালু� `,` রিনাদেজারম্যাদেত�কুদেরঘ�/টিসা�জা�দেনা�এবাং���দের��কু�বাংন্ধু�দে�রসা�দে� `real-time multiplayer match...` সাবাংরিকুছ�একুজা�য়গা�য়। `🎲 What makes LooDoo special?` বাং��লু� `🎲🎲 English 🎲` পরিররিচতবাং��লু�দে�রি�লু�ডু�ররিনায়ম্যা `Authentic Bangladeshi-style Ludo rules 🎲` বাংন্ধু�দে�রসা�দে� `Online Multiplayer Real-time online multiplayer 🎲 -` একুযে��দেনা২ ৪জানা `2-4 player Pass & Play 🎲 AI-` এররিবাংরুদে! যেখালু� `Play against AI Live Voice Chat` 🎙️� `Real-time voice chat` 😂 বাং��লু�ম্যাজা�র `Soundboard Fun Bangla soundboard & reactions` ⚔️� `2v2 Team Battle 2v2 partnership matches 🎲 -` সা�প লু�ডু� `Bangladeshi-inspired Snakes & Ladders` 🏆 `XP, Level & Achievements XP, levels & achievements 🎲 Custom Token Skins Multiple token styles 🎲 Match Summary Card Shareable match summary 🎲 Instant Rematch Quickly play again ________________` 
 
-<br/>
+`🎲 GAME MODES 🎲 1. Classic Ludo` চ�র গুটিরআসালুলুড়া�ই `The classic Ludo experience with the familiar race to bring all four tokens home.` 
 
-> **"ছক্কার খেলা, বন্ধুর মেলা — বাংলাদেশের খাঁটি ঘরোয়া লুডুর আসল আনন্দ!"**  
-> *Experience fast, ad-free, real-time multiplayer Ludo, Snakes & Ladders, and 2v2 battles right inside your mobile or desktop browser — with zero storage consumed and zero app store hassle!*
+`🎲 4 Tokens Safe Zones` ⭐ ⚔️� `Token Capturing 🎲 3-Six Rule 🎲 Home Stretch` 
 
----
-
-</div>
-
-## 📑 Table of Contents (সুচিপত্র)
-- [📸 Visual Showcase & Screenshots](#-application-screenshots--visual-showcase-অ্যাপের-বাস্তব-ইন্টারফেস)
-- [🌟 What is LooDoo?](#-what-is-loodoo-লুডু)
-- [⚡ Why LooDoo is 10x Better](#-why-loodoo-is-10x-better-than-heavy-store-apps)
-- [🇧🇩 প্রধান বৈশিষ্ট্যসমূহ (Highlights)](#-প্রধান-বৈশিষ্ট্যসমূহ-bangla-feature-highlights)
-- [🎮 Complete Feature Arsenal](#-complete-feature-arsenal)
-- [🛠️ Tech Stack & Architecture](#️-tech-stack--architecture)
-- [🚀 Quick Start & Installation](#-quick-start--installation)
-
----
-
-## 🌟 What is LooDoo (লুডু)?
-
-**LooDoo** is a cutting-edge, ultra-lightweight **Progressive Web Application (PWA)** engineered for friends and family across Bangladesh and the global diaspora. Unlike bloated native mobile games filled with unskippable ads and heavy 150MB+ downloads, **LooDoo runs instantly inside any browser with 0MB permanent storage cost**, works smoothly on weak mobile networks, and offers rich offline support.
-
-Whether you want to create a private 6-digit room to voice chat with friends abroad, play an intense 2v2 Tag-Team clash, or pass one phone around the living room table with family (**এক ফোনে ৪ জন - Pass & Play**), LooDoo delivers authentic cultural gameplay with royal Bangladeshi aesthetics.
-
----
-
-## ⚡ Why LooDoo is 10x Better Than Heavy Store Apps
-
-| Feature | 🎲 **LooDoo PWA** | 📱 **Typical Play Store / App Store Ludo** |
-| :--- | :--- | :--- |
-| **Storage & Download** | **0 MB (Instant browser launch & caching)** | **120 MB – 250 MB heavy APK download** |
-| **Advertisements** | 🚫 **100% Ad-Free forever (No popup spam)** | ⚠️ Unskippable 30s video ads after every turn |
-| **Installation** | ⚡ **1-Tap Add to Home Screen (PWA)** | ⏳ Long store loading, updates & permissions |
-| **Offline Play** | ✅ **Full 4-Player Pass & Play on 1 Phone** | ❌ Often locked behind online paywalls |
-| **Live Voice Chat** | 🎙️ **Free WebRTC Peer-to-Peer Voice Rooms** | 🔒 Paid VIP pass or robotic audio |
-| **Bangla Soundboard** | 🇧🇩 **14 Iconic Bangla Voice Clips & Taunts** | 🤖 Generic English robotic sound effects |
-| **Device Support** | 🌐 **Android, iOS/iPhone, iPad, PC, Mac, Linux** | 📵 Restricted to specific OS versions |
-| **Battery & RAM Usage**| 🔋 **Ultra-low CPU & memory footprint** | 🔋 Heavy background drain & overheating |
-| **Match Summary** | 📷 **High-Res Canvas Scorecard Generator** | ❌ Plain text or watermarked screenshots |
-| **Safety & Privacy** | 🛡️ **No spam logins; Vercel & Firebase secure**| 👁️ Invasive tracking, intrusive permissions |
-
----
-
-## 🇧🇩 প্রধান বৈশিষ্ট্যসমূহ (Bangla Feature Highlights)
-
-### 🎙️ ১. বাংলা ফান সাউন্ডবোর্ড ও ভয়েস ডায়লগ (Bangla Soundboard)
-খেলার মধ্যে বন্ধুদের চমকে দিতে এবং আড্ডায় হাসির ঝড় তুলতে রয়েছে খাঁটি বাংলা ভয়েস ক্লিপ ও সাউন্ডবোর্ড:
-- *"ছক্কা মার রে ভাই!"* 🎲
-- *"ঘুঁটি কাটার ওস্তাদ আমি!"* ⚔️
-- *"পালাবি কোথায় এবার?"* 🏃
-- *"আরে ভাই কি চাল দিলেন!"* 😲
-- *"লুডু খেলার রাজা আমি!"* 👑
-- *"কোপ সামলাও!"* 🎯
-- *"ম্যাচ কিন্তু জমে গেছে!"* 🔥
-
-### 📱 ২. এক ফোনে ৪ জন (Offline Pass & Play)
-ইন্টারনেট বা ওয়াইফাই নেই? কোনো সমস্যা নেই! ড্রয়িং রুমে বা আড্ডায় একটি ফোন টেবিলের মাঝে রেখে ২ থেকে ৪ জন বন্ধু কিংবা পরিবারের সদস্য একসাথে অফলাইনে খেলতে পারবেন।
-
-### ⚔️ ৩. ৪টি আকর্ষণীয় গেম মোড (4 Dynamic Game Modes)
-1. **ক্লাসিক ৪-গুটি লুডু (Classic Ludo)**: ৪টি গুটি ঘরে নেওয়ার চিরচেনা আসল লুডু।
-2. **২-গুটির কুইক রাশ (2-Token Rush)**: মাত্র ৫-৭ মিনিটের দ্রুতগতির রোমাঞ্চকর ম্যাচ।
-3. **সাপ-লুডু বোর্ড (Snakes & Ladders)**: ১০০ ঘরের ঐতিহ্যবাহী সাপ ও বাঁশের মই বেয়ে ওঠার নস্টালজিক বোর্ড।
-4. **২ বনাম ২ পার্টনারশিপ ম্যাচ (2v2 Tag-Team)**: বন্ধুকে সাথে নিয়ে লাল+হলুদ বনাম সবুজ+নীল টিম ডাবল যুদ্ধ!
-
-### 🎖️ ৪. ট্রফি ও লেভেলিং সিস্টেম (XP, Levels & Badges)
-প্রতিটি ম্যাচ জয়, ৬ রোল করা এবং গুটি কাটার মাধ্যমে অর্জন করুন XP ও লেভেল আপ। আনলক করুন "ছক্কার রাজা", "অপরাজেয় বীর", এবং "ক্যাপচার মাস্টার" এর মতো সম্মানজনক ট্রফি ব্যাজ!
-
-### 📷 ৫. হাই-রেজুলিউশন ম্যাচ স্কোরকার্ড ফটো জেনারেটর (MatchSummaryGenerator)
-ম্যাচ শেষ হতেই এক ক্লিকে Canvas API দিয়ে তৈরি করুন আকর্ষণীয় ডিজিটাল ফটো কার্ড। জয়ী খেলোয়াড়, ছক্কার সংখ্যা ও গুটি কাটার পরিসংখ্যান সহ ছবিটি সরাসরি ডাউনলোড করুন বা WhatsApp / Facebook এ শেয়ার করুন।
-
----
-
-## 📸 Application Screenshots & Visual Showcase (অ্যাপের বাস্তব ইন্টারফেস)
-
-Explore the authentic visual craftsmanship, Bengali typography, traditional Bangladeshi boards, and real-time multiplayer interfaces of **LooDoo**:
-
-### 🏠 ১. মেইন লবি ও গেম হাব (Main Lobby & Game Hub)
-Home screen with 1-tap room creation, direct room joining, offline Pass & Play, AI duel mode, sound toggles, and live profile preview.
-
-![LooDoo Main Lobby & Game Hub](Screenshot_20260815_135510_Chrome.png)
-
----
-
-### ⚙️ ২. রুম তৈরি ও ম্যাচ কনফিগারেশন (Room Creation & Match Setup)
-Create customized private multiplayer rooms with 4 distinct game modes (*Classic, Rush, Snake-Ludo, 2v2 Tag-Team*), flexible player slots (2, 3, or 4 players), and adjustable turn timers (20s, 30s, 45s).
-
-![Create Room & Match Configuration](Screenshot_20260815_135526_Chrome.png)
-
----
-
-### 🎨 ৩. প্রোফাইল ও ঘুঁটির স্কিন কাস্টমাইজেশন (Profile & 3D Token Skins)
-Personalize your avatar with dynamic emojis and choose from 5 premium handcrafted token skins: *রয়েল ক্লাসিক (Glossy 3D Gold)*, *কাঠের কারুকাজ (Handcrafted Antique)*, *পিতলের মেটাল (Polished Metal)*, *সাইবার নিওন (Futuristic Glow)*, and *সাদা মার্বেল (Premium Stone)*.
-
-![Profile & 3D Token Skins Customizer](Screenshot_20260815_135538_Chrome.png)
-
----
-
-### 👥 ৪. এক ফোনে ৪ জন — অফলাইন মোড (Offline Pass & Play Setup)
-Pass one phone around the table with zero internet required. Customize custom nicknames and avatar emojis for all 4 players in the same room.
-
-![Offline Pass & Play Setup](Screenshot_20260815_135600_Chrome.png)
-
----
-
-### 🐍 ৫. ঐতিহ্যবাহী বাংলাদেশি সাপ লুডু বোর্ড (Authentic Bangladeshi Snake & Ladder)
-100-cell nostalgic board featuring indigenous Bangladeshi snake species (*কালনাগিনী, গোখরো, চন্দ্রবোড়া, অজগর*), rustic bamboo & teak ladders, dual Bengali-English numerals, active turn clock, 3D dice, and live WebRTC voice chat.
-
-![Authentic Bangladeshi Snake & Ladder Board](Screenshot_20260815_135617_Chrome.png)
-
----
-
-### 🎲 ৬. লাইভ ১৫x১৫ ক্লাসিক লুডু ম্যাচ (Live 15x15 Ludo Match)
-Full 15x15 board with color-themed quadrants, remapped start ways, engraved player names inside yards, star safe zones, 3D physics dice, and live turn timers.
-
-![Live 15x15 Classic Ludo Match](Screenshot_20260815_135631_Chrome.png)
-
----
-
-### 📜 ৭. ঐতিহ্যবাহী বাংলাদেশি লুডুর নিয়মাবলী (Traditional Ludo Rules Guide)
-Complete in-game guide covering authentic Bangladeshi household rules: 6-out yard rule, consecutive 3-six penalty, token capture bonus turns, star safe sanctuaries, and exact home rolls.
-
-![Traditional Ludo Rules Guide](Screenshot_20260815_135645_Chrome.png)
-
----
-
-### 🏆 ৮. অর্জন ও ট্রফি সংগ্রহশালা (Achievements & Trophies Showcase)
-Track career match stats, wins, sixes, token captures, player XP level, and unlock 6 exclusive achievements: *ছক্কার রাজা*, *ক্যাপচার ওস্তাদ*, *অপরাজিত নায়ক*, *বিদ্যুৎ গতি*, *সর্পজয়ী সম্রাট*, and *টিম লিজেন্ড*.
-
-![Achievements & Trophies Showcase](Screenshot_20260815_135659_Chrome.png)
-
----
-
-## 🎮 Complete Feature Arsenal
-
-### 🎲 Gameplay & Board Mechanics
-- **Authentic Bangladeshi Style Snake & Ladder Board (ঐতিহ্যবাহী বাংলাদেশি সাপ লুডু)**: Complete cultural visual and mechanical redesign featuring:
-  - **Handcrafted Serpentine Snakes**: Illustrated SVG snake curves with Cobra hoods (ফণা তোলা গোখরো), glowing yellow/ruby eyes, white fangs, and flicking red tongues modeled after indigenous Bangladeshi snake species: *কালনাগিনী* (98➔79), *পদ্মগোখরো* (95➔75), *হলুদ শঙ্খিনী* (93➔73), *সুন্দরবনের মহা অজগর* (87➔36), *চন্দ্রবোড়া / রাসেল ভাইপার* (62➔19), *নদীর ঢোঁড়া সাপ* (54➔34), *গ্রাম্য দাঁড়াশ সাপ* (17➔7), and *সবুজ ঘাস সাপ* (64➔60).
-  - **Traditional Bamboo & Teak Ladders (বাঁশের ও কাঠের মই)**: Parallel woodgrain rails, realistic wooden rungs (ধাপ), brass fastener rivets, and cast drop shadows representing authentic village bamboo and teak ladders: *গ্রাম্য বাঁশের মই* (4➔14), *পাকা সেগুন কাঠের মই* (9➔31), *পল্লী মজবুত মই* (21➔42), *আকাশ ছোঁয়া মহা মই* (28➔84 - +৫৬ ঘর বিশাল লাফ), *পদ্মা সেতু মই* (51➔67), *বিজয়ের সোনার মই* (72➔91), and *চূড়ান্ত রাজকীয় মই* (80➔99).
-  - **Dual Bengali & English Numerals (১..১০০)**: Large high-contrast Bengali digits (`১, ২, ... ১০০`) with subtle English corner coordinates.
-  - **Carved Teak & Terracotta Frame**: Traditional brass corner filigree brackets (পিতলের কোনা বন্ধনী), Nakshi Kantha patterned canvas overlays, celebratory start arch (`শুরু / START` at #1), and royal golden crown finish (`বিজয় / HOME` at #100).
-  - **Interactive Tile Inspector & 3 Board Styles**: Real-time tile details tooltip on tap/hover, plus a 1-tap style switcher (*ঐতিহ্যবাহী ভিন্টেজ*, *পোড়ামাটি*, *উৎসবমুখর রাজকীয়*).
-  - **Dynamic Bengali Commentary & Audio**: Dedicated snake hiss/slide (`snakeBite`) and ladder climb arpeggio (`ladderClimb`) sound synthesis with celebratory Bangla toasts.
-- **Engraved Yard Player Names**: Every yard features the assigned player's name and emoji avatar engraved directly into the inner white space in that yard's matching theme color (Emerald for Green, Amber for Yellow, Crimson for Red, Royal Blue for Blue), visible to all participants in real time with active turn highlights.
-- **Remapped Quadrant Start Ways & Track Alignment**: Updated 15x15 board geometry with each player's colored start paths remapped to the opposite side of their respective yards:
-  - **Red (P1, Bottom-Left Yard)**: Start moved to Bottom Arm left lane (`[13, 6]`), entering Red Home Path on Bottom Arm (`[13..9, 7]`) leading to the Bottom Home Triangle.
-  - **Green (P2, Top-Left Yard)**: Start moved to Left Arm top lane (`[6, 1]`), entering Green Home Path on Left Arm (`[7, 1..5]`) leading to the Left Home Triangle.
-  - **Yellow (P3, Top-Right Yard)**: Start moved to Top Arm right lane (`[1, 8]`), entering Yellow Home Path on Top Arm (`[1..5, 7]`) leading to the Top Home Triangle.
-  - **Blue (P4, Bottom-Right Yard)**: Start moved to Right Arm bottom lane (`[8, 13]`), entering Blue Home Path on Right Arm (`[7, 13..9]`) leading to the Right Home Triangle.
-  - **Star Safe Sanctuaries**: Remapped to `[8, 2]` (Left Arm), `[2, 6]` (Top Arm), `[6, 12]` (Right Arm), and `[12, 8]` (Bottom Arm) ensuring perfect 8-step intervals and full movement consistency.
-- **Movable Token Visual Highlight Animation**: Active player's legal pieces feature dual-wave harmonic beacon pulses, hover diamonds, bouncing spring translations, and prominent high-contrast glowing auras.
-- **Dynamic Turn Indicator Transitions**: Spring-animated turn switches with color-themed auras, active player pulses, and real-time roll alerts.
-- **Bangladeshi 3-Six Rule (তিন ছক্কায় দান বাতিল)**: Authentic local rule engine that cancels the turn if a player rolls three 6s consecutively.
-- **Blockades & Double Token Stacking**: Strategic defense mechanics to protect tokens.
-- **Safe Cells (Star Zones)**: 8 traditional colored sanctuary cells where tokens cannot be captured.
-- **Interactive 3D Physics Dice**: Smooth tactile rolling animations with custom sound synthesis.
-- **4 Royal Board Themes**:
-  - 👑 *Royal Vintage Wood*
-  - 🏺 *Bengal Terracotta (পোড়ামাটি)*
-  - 🌌 *Midnight Cyber Neon*
-  - 🪙 *Imperial Brass & Emerald*
-
-### 🌐 Online Multiplayer & Room Networking
-- **Interactive Offline Detection & In-Place 'Reconnect Now'**: Live network monitoring with a dedicated 'Reconnect Now' button that manually re-enables Firestore network channels (`enableNetwork`) and re-initializes room, player roster, and board state without forcing a full page reload or losing active view states.
-- **Persistent Seamless Firebase Authentication**: Configured with browser local persistence (`browserLocalPersistence`) and automatic session recovery, guaranteeing permanent multi-session connectivity without developer-side approvals or auth expiration prompts.
-- **Direct 6-Digit Room Resolution**: Instant O(1) cross-device room lookup directly via Firestore document identifiers and multi-tier query fallbacks.
-- **Instant 6-Digit Room Codes & 1-Tap Invite**: Create private rooms and invite friends via WhatsApp / messaging apps with 1 tap with the custom Bengali invitation message (`লুডো খেলবো, খেলতে চাইলে ক্লিক করো লিংকে -`) and instant deep-join links.
-- **Cross-Device Reliability**: Automatic anonymous authentication ensures players on any mobile or desktop browser immediately sync with host rooms without login friction.
-- **State Integrity & Race Condition Safeguard**: Robust multi-tier optimistic client updates backed by version-checked atomic Firestore state transactions.
-- **Sub-50ms Real-Time Sync**: Synchronized turn management powered by Firebase Firestore snapshots.
-- **WebRTC Peer-to-Peer Voice Chat**: Crystal-clear voice communication with real-time mic wave visualization and mute controls.
-- **Instant Rematch Engine**: Seamless 1-tap rematching keeping the same room and player slots intact.
-- **Reconnection Resilience**: Disconnected players can seamlessly re-enter live games without state loss.
-
----
-
-## 🔍 System & Architecture Integrity Verified
-
-A 360-degree verification of all frontend and backend subsystems was completed:
-
-1. **Frontend UI & State Synchronization**:
-   - Board render loop and 15x15 SVG/Grid geometry verified for all 4 quadrants, safe star sanctuaries, and home columns.
-   - Dynamic token visual beacons and animations for legal move highlights validated.
-   - Local pass-and-play and single-player bot states confirmed resilient to rapid interactions.
-2. **Game Engine (`engine.ts`)**:
-   - Move validation, track index translations (0..51), home-stretch bounds, overshoot prevention, and capture logic mathematically proven.
-   - Bangladeshi 3-consecutive-sixes penalty rule verified.
-3. **Backend & Firebase Real-time Engine (`gameService.ts`)**:
-   - O(1) document ID room lookup and query fallbacks verified to eliminate room resolution delays.
-   - Real-time snapshot subscriptions for rooms, player rosters, and game turns verified with automatic local caching.
-   - Automatic guest profile creation and Firebase anonymous authentication verified for zero-friction room joining.
-4. **Audio & Media Subsystems**:
-   - Web Audio API synthesizer unlocked on first touch/click across iOS/Android browsers.
-   - WebRTC voice signaling channels verified with Firestore room signaling.
-
----
-
-## 📲 How to Install LooDoo PWA (0 MB App)
-
-LooDoo is an installable **Progressive Web App (PWA)** that runs directly in full-screen standalone mode without visiting the Google Play Store or Apple App Store.
-
-<details>
-<summary><b>📱 For Android Users (Google Chrome / Edge / Brave)</b></summary>
-
-1. Open your browser and visit: `https://loodoo.vercel.app`
-2. Tap the **"📲 ইনস্টল করুন / Install App"** button at the top or in the banner.
-3. Alternatively, tap the **3 dots menu (⋮)** in the top right corner of Chrome and select **"Add to Home screen"** or **"Install App"**.
-4. The **LooDoo : লুডু** icon will appear on your phone's home screen and app drawer just like any regular native app!
-</details>
-
-<details>
-<summary><b>🍎 For iPhone & iPad Users (Apple Safari)</b></summary>
-
-1. Open Safari and go to: `https://loodoo.vercel.app`
-2. Tap the **Share button (square with arrow up ⎋)** at the bottom of the screen.
-3. Scroll down and tap **"Add to Home Screen" (হোম স্ক্রিনে যোগ করুন)**.
-4. Tap **"Add"** in the top right. LooDoo will now launch in glorious full-screen mode with no Safari address bar!
-</details>
-
-<details>
-<summary><b>💻 For PC & Mac Users (Chrome / Edge)</b></summary>
-
-1. Visit `https://loodoo.vercel.app` on your desktop browser.
-2. Click the **Install icon (🖥️ or ⊕)** in the URL address bar.
-3. Enjoy full-screen, ultra-responsive Ludo on your widescreen monitor!
-</details>
-
----
-
-## 🛡️ Security, Privacy & Global Infrastructure
-
-- **Vercel Global Edge CDN**: Hosted globally on Vercel's high-speed edge network with automatic SSL encryption (HTTPS) and sub-50ms latency in South Asia.
-- **Google Cloud & Firebase Firestore**: Enterprise-grade database isolation, strict Firestore security rules, and real-time synchronization.
-- **Encrypted WebRTC P2P Voice**: Direct browser-to-browser voice communication with zero audio storage on servers.
-- **No Data Harvesting**: Zero invasive ads, no intrusive contact permissions, and instant guest play.
-
----
-
-## 🛠️ Technology Stack
+প�রদেনা�যেসাইলু�ডু� `,` নাত6নাসা�দেজা `!` 
 
 ```
-Frontend:       React 19, TypeScript, Vite
-Styling:        Tailwind CSS, Lucide Icons, Canvas-Confetti
-Animations:     Motion (Framer Motion)
-Audio:          Web Audio API Synthesizer & Web Speech API
-Realtime DB:    Google Firebase Firestore
-Voice Engine:   WebRTC Peer-to-Peer Mesh
-Graphics:       HTML5 Canvas API (High-Resolution Scorecard Generator)
-Hosting & CDN:  Vercel Edge Network
-PWA:            Web App Manifest, Service Worker Caching, Standalone Display
+________________
 ```
 
----
+`⚡ 2. 2-Token Rush` কুম্যাসাম্যাদেয়যেবাংরি�উদে9জানা� `! Don't have time for a long Ludo match? Play a faster game using only two tokens. Perfect for: * Quick matches * Short breaks * Friendly challenges * Fast-paced gameplay` ৫ `-` ৭রিম্যারিনাদেটারম্যাদেধু�জাদেম্যাউঠু�কুলু�ডু�রলুড়া�ই `!` 
 
-## 🚀 Local Development & Setup
-
-To run LooDoo locally on your machine:
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/loodoo-bangla-ludo.git
-
-# 2. Navigate to project folder
-cd loodoo-bangla-ludo
-
-# 3. Install dependencies
-npm install
-
-# 4. Start Vite development server
-npm run dev
+```
+________________
 ```
 
-The app will be accessible at `http://localhost:3000`.
+`🎲 3. Bangladeshi Snakes & Ladders` পরিররিচত সা�প `-` লু�ডু� `,` বাং��লু�দে�রি�আবাংদে= `A nostalgic 100-cell Snakes & Ladders board redesigned with Bangladeshi visual inspiration. 🎲 Indigenous snake-inspired artwork` 🪵 `Bamboo & wooden ladder aesthetics` বাং��লু� `+ English numerals 🎲 Multiple board styles` 🔊 `Dynamic sound effects` শৈ��দেবাংরসা�প `-` লু�ডু�রস্মৃ@রিত `,` এবাং�ররিডুজিজাটা�লুযেবাং�দেডুB । 
 
----
+```
+________________
+```
 
-## 📜 Credits & License
+⚔️� `4. 2v2 Tag-Team` বাংন্ধু� বাংনা�ম্যাবাংন্ধু� `! Team up with your partner and take on another team. RED + YELLOW` 🆚 `GREEN + BLUE Communication, strategy and a little bit of luck can decide everything.` একুসা�দে� যেখালু�না।একুসা�দে�জিজাত6না। `________________` 
 
-- **Designed & Developed with ❤️ for FnF by:** [**©munabbirMushran**](https://github.com/munabbirMushran)
-- **License:** Open-source under the [MIT License](LICENSE).
+`PLAY. TALK. LAUGH.` 🎙️� `Live Voice Chat Why type when you can talk? LooDoo supports real-time peer-to-peer voice communication during multiplayer matches. Talk with your friends` 🎙️� 🔇 `Mute when needed` 📊 `Live microphone activity visualization 🎲 WebRTC peer-to-peer audio` ��দেরযে�দেকুওম্যাদেনা=দেবাংসাবাং�ইএকুইআড্ডা�য়বাংদেসাআদেছ�। 
 
-<div align="center">
+```
+________________
+```
 
-<br/>
+😂 `BANGLA FUN SOUNDBOARD Ludo without teasing isn't really Ludo.` 😄 `LooDoo adds Bangla-inspired reactions and playful voice clips to make matches more entertaining. 🎲 "` ছক্কা�ম্যা�রযেরভা�ই `!"` ⚔️� `"` ঘ�/টিকু�টা�রওস্তা��আরিম্যা `!" 🎲 "` প�লু�রিবাংযেকু���য়এবাং�র `?"` 😲 `"` আদেরভা�ই `,` কুE চ�লুরি�দেলুনা `!" 🎲 "` লু�ডু�যেখালু�রর�জা�আরিম্যা `!" 🎲 "` ম্যা��চরিকুন্তুজাদেম্যাযেগাদেছ `!" And more fun reactions to make your matches feel like a real Bangladeshi adda.` 
 
-**🎲 LooDoo : বন্ধুদের সাথে আড্ডার সেরা সঙ্গী! 🇧🇩**  
-*Play now at [loodoo.vercel.app](https://loodoo.vercel.app)*
+```
+________________
+```
 
-</div>
+`🎲 ONE PHONE. FOUR PLAYERS. Offline Pass & Play No internet? No problem. Place one phone in the middle of the table and pass it between players. 🎲 2-4 local players 🎲 One device 🎲 No internet required 🎲 Custom names & avatars Perfect for: • • • •` বাং�সা�রআড্ডা� বাংন্ধু�দে�রআড্ডা� পরিরবাং�র ভ্রম্যাণ অদেপক্ষা�রসাম্ `________________` 
+
+`🎲 PLAY WITH FRIENDS ONLINE Create a Private Room Create your own multiplayer room and invite your friends. How it works:` 1️⃣�1️⃣� `Create a room Generate your private room. Share the code` 2️⃣� `Send the room code or invitation to your friends.` 3️⃣�3️⃣� `Friends join They can join from their own phones or computers. Start the match` 4️⃣� `Choose your game mode and let the battle begin! 🎲 Easy sharing Invite friends through messaging apps such as WhatsApp with a ready-to-share invitation.` যেকু�ডুপ�ঠু�না `→` সাবাং�ই `Join` কুরুনা `→` যেখালু�শুরু `! ________________` 
+
+`🎲 MAKE IT YOUR GAME Custom Profiles & Token Skins Give your player identity some personality. 🎲 Custom player name` 😀 `Avatar emoji 🎲 Multiple token styles 🎲 Animated visual effects Choose from styles including: * 🎲 Royal Classic *` 🪵 `Handcrafted Wood *` 🪙 `Polished Metal * 🎲 Cyber Neon * Premium Marble` 🏛️� `________________` 
+
+🏆 `PLAY. WIN. LEVEL UP. XP • Levels • Achievements Your LooDoo journey doesn't end when a match ends. Earn XP through gameplay and unlock achievements as you improve. 🎲 Achievement examples` ছক্কা�র র�জা� `— King of Sixes` ⚔️� 7কু��পচ�রওস্তা�� `— Capture Master` অপর�জিজাতনা�য়কু `— Undefeated Hero ⚡` রিবাং� ৎগারিত `— Lightning Speed` সাপBজায়E সাম্রা�টা `— Snake Conqueror` টিম্যা জিলুদেজান্ড `— Team Legend Keep playing. Keep improving. Build your LooDoo legacy. ________________` 
+
+`🎲 SHOW OFF YOUR VICTORY Match Summary Cards Won an intense match? Don't just tell your friends. Show them.` 😎 `After a match, generate a high-resolution summary card containing game statistics such as:` 🏆 `Winner 🎲 Sixes rolled` ⚔️� `Tokens captured` 📊 `Match information Save it and share it with your friends. WhatsApp • Facebook • Messenger • Social Media` 🏆 `"` যেকুজিজাদেতদেছ `?" 🎲 "` এইযে�খা `,` প্রম্যা�ণ `!" ________________` 
+
+`🎲🎲 MADE FOR BANGLADESHI LUDO LOVERS LooDoo pays special attention to the small things that make local Ludo feel familiar. 🎲 Bangladeshi-style rules Including mechanics such as: * 6 required to bring a token out * Three consecutive sixes can cancel the turn * Token capturing * Capture-related bonus turns * Safe/star cells * Blockades * Home-path movement * Overshoot prevention The goal is simple:` যে�লু�ডু�আম্যার�যেছ�টাদেবাংলু�যে�দেকুযেখাদেলুরিছ `,` যেসাইঅনা�ভাMরিতটা�দেকুরিডুজিজাটা�লুভা�দেবাংজি�রিরদেয়আনা�। 
+
+```
+________________
+```
+
+`🎲 BEAUTIFUL BOARDS Choose the visual atmosphere you like. 🎲 Royal Vintage Wood Classic wooden-board feeling. 🎲 Bengal Terracotta Inspired by Bengal's traditional terracotta aesthetic. 🎲 Midnight Cyber Neon A modern neon gaming atmosphere.` 🪙 `Imperial Brass & Emerald A premium royal-inspired look. ________________` 
+
+`🎲 SCREENSHOTS 🎲 Tip: Add your best 5-8 real screenshots here. The first 3 should show the Lobby, Multiplayer Room and an active Ludo match.` 🏠 `Main Lobby Show the main game hub and available game modes. 🎲 Classic Ludo Match Show the board, tokens, dice and active gameplay. 🎲 Multiplayer Room Show friends joining and room configuration. 🎲 Bangladeshi Snakes & Ladders Show the unique Bangladesh-inspired board.` 🏆 `Achievements Show XP, levels and trophies. 🎲 Match Summary` 
+
+```
+Show the shareable victory card.
+________________
+```
+
+`🎲 START PLAYING 🎲 Play instantly` 👉 `PLAY LooDoo LooDoo is built as an installable Progressive Web App. You don't need to go through a traditional app-store installation process. ________________` 
+
+```
+🎲 Android
+```
+
+```
+1. Open loodoo.vercel.app in Chrome, Edge or another supported browser.
+2. Tap Install App if available.
+```
+
+```
+3. Alternatively, open the browser menu and choose Add to Home Screen / Install
+App.
+4. Launch LooDoo from your home screen.
+```
+
+```
+________________
+```
+
+```
+🎲 iPhone / iPad
+```
+
+```
+1. Open loodoo.vercel.app using Safari.
+```
+
+```
+2. Tap Share.
+```
+
+```
+3. Select Add to Home Screen.
+4. Tap Add.
+LooDoo can then launch like an installed web app.
+```
+
+```
+________________
+```
+
+💻 `Desktop Open the game in a supported desktop browser and use the browser's install option when available.` 
+
+```
+________________
+```
+
+`BUILT WITH MODERN WEB TECHNOLOGY` 🛠️� `LooDoo combines modern frontend technology with real-time multiplayer infrastructure. Technology Purpose` ⚛️� `React 19 User interface 🎲 TypeScript Application logic ⚡ Vite Development & build tooling 🎲 Tailwind CSS Styling 🎲 Motion Animations 🎲 Firebase Firestore Real-time multiplayer state 🎲 Firebase Authentication Guest authentication & sessions WebRTC` 🎙️� `Peer-to-peer voice 🎲 HTML5 Canvas Match summary generation` 🔊 `Web Audio API Game sounds` 📦 `PWA Installable web experience` ☁️� `Vercel` 
+
+```
+Hosting & deployment
+```
+
+```
+________________
+```
+
+🔒 `PRIVACY & SECURITY LooDoo is designed around a lightweight, friction-free multiplayer experience. Key principles` 🛡️� 
+
+```
+* No mandatory account creation for casual play
+```
+
+- `Anonymous authentication for multiplayer sessions` 
+
+- `Firestore security rules` 
+
+- `HTTPS deployment` 
+
+- `Peer-to-peer voice communication through WebRTC` 
+
+- `Voice audio is not intended to be stored as game recordings` 
+
+```
+________________
+```
+
+�💻 `FOR DEVELOPERS Want to explore the code or contribute? Clone the repository: git clone https://github.com/mbir31/LooDoo.git cd LooDoo npm install npm run dev` 
+
+```
+The development server will then be available through the local Vite URL.
+```
+
+```
+________________
+```
+
+`🎲 OPEN SOURCE LooDoo is an open-source project created as a personal experiment and a celebration of multiplayer Ludo. If you like the project:` ⭐ `Star the repository 🎲 Report bugs 🎲 Suggest improvements 🎲 Submit contributions 🎲 Share it with your friends Every star and piece of feedback helps the project grow. ________________` 
+
+❤️� `MADE WITH LOVE FOR LUDO LOVERS LooDoo was created by © munabbirMushran Built for: 🎲🎲 Bangladesh Families 🎲 Friends` 🎮 `Ludo lovers` 🌏 `Bangladeshi communities everywhere` ছক্কা�র যেখালু� `,` বাংন্ধু�রযেম্যালু� `! 🎲🎲 LooDoo — Let's Play!` 
+
+🎮 `READY TO PLAY?` 👉👈 `PLAY LooDoo NOW 🎲 Create a room • Invite your friends • Roll the dice • Capture their tokens • Bring them home!` 
+
+```
+________________
+```
+
+`© munabbirMushran • LooDoo :` লু�ডু� `🎲🎲 Made with` ❤️� `for friends, family and the Bangladeshi Ludo community.` 
+
